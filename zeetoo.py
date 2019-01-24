@@ -76,24 +76,26 @@ class Backuper:
     def ignored(self):
         return set(self.config['IGNORE'])
 
-    def add_source(self, source: str, mode: str) -> None:
+    def add_source(self, source: str, mode: str) -> pathlib.Path:
         if not mode in ('f', 'd', 'r'):
             raise ValueError(
                 "Invalid mode. Mode should be one of: 'f', 'd', 'r'"
             )
-        path = pathlib.Path(source)
+        path = pathlib.Path(source).resolve()
         if not path.exists():
             logging.warning(f"Source doesn't exist: {source}")
         # raise if source incompatible with mode
-        self.config['SOURCE'][str(path.resolve())] = mode
+        self.config['SOURCE'][str(path)] = mode
+        return path
 
     def remove_source(self, source: str) -> bool:
         return self.config.remove_option('SOURCE', source)
 
-    def add_ignored(self, ignored: str):
-        path = pathlib.Path(ignored)
-        self.config['IGNORE'][str(path.resolve())] = None
+    def add_ignored(self, ignored: str) -> pathlib.Path:
+        path = pathlib.Path(ignored).resolve()
+        self.config['IGNORE'][str(path)] = None
         logging.debug(f"Ignored path registered: {ignored}")
+        return path
 
     def remove_ignored(self, ignored: str) -> bool:
         return self.config.remove_option('IGNORED', ignored)
