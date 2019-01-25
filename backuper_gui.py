@@ -1,5 +1,6 @@
 import logging
 import pathlib
+import threading
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter.filedialog import askopenfilename, askdirectory, asksaveasfilename
@@ -7,8 +8,11 @@ from tkinter.filedialog import askopenfilename, askdirectory, asksaveasfilename
 from zeetoo import Backuper
 
 
-def make_button(master, text, row=0, column=0, sticky='nwe', command=None):
-    b = ttk.Button(master, text=text, command=command)
+def make_button(master, text, row=0, column=0, sticky='nwe', textvariable=None,
+                command=None):
+    b = ttk.Button(
+        master, text=text, textvariable=textvariable, command=command
+    )
     b.grid(row=row, column=column, sticky=sticky)
     b.config(width=15)
     return b
@@ -71,7 +75,14 @@ def changed_time(
 
 def save(bcp: Backuper):
     # TO DO: make it ask for filename
+    run_text_var.set('Running...')
+    run_button.config(state='disabled')
     bcp.save_config()
+    try:
+        run_text_var.set('Run Now')
+        run_button.config(state='normal')
+    except Exception:
+        logging.debug('Could not change button state')
 
 
 def load(bcp: Backuper):
@@ -84,10 +95,16 @@ def load(bcp: Backuper):
 def schedule(bcp: Backuper):
     bcp.schedule()
 
+    
+def _run(bcp: Backuper):
+    bcp.backup()
+    
 
 def run_now(bcp: Backuper):
     # TO DO: make it thread, disable run button
-    bcp.backup()
+    thread = threading.Thread(target=_run, args=[bcp])
+    thread.start()
+    
 
 
 def fill_gui(bcp: Backuper):
@@ -208,15 +225,17 @@ if __name__ == '__main__':
                               command=lambda: save(backuper))
     load_button = make_button(bottom_frame, 'Load Config', 0, 9,
                               command=lambda: load(backuper))
-    run_button = make_button(bottom_frame, 'Run Now', 0, 7,
+    run_text_var = tk.StringVar()
+    run_text_var.set('Run Now')
+    run_button = make_button(bottom_frame, '', 0, 7, textvariable=run_text_var,
                              command=lambda: run_now(backuper))
     sched_button = make_button(bottom_frame, 'Schedule', 0, 6,
                                command=lambda: schedule(backuper))
     tk.Frame(bottom_frame).grid(row=0, column=8, sticky='we')
     tk.Grid.columnconfigure(bottom_frame, 8, weight=1)
     tk.Grid.rowconfigure(bottom_frame, 0, weight=1)
-
-    logging.getLogger().setLevel(logging.INFO)
+    logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
+    # logging.getLogger().setLevel(logging.INFO)
     backuper = Backuper(
         pathlib.Path(__file__).resolve().with_name('config.ini')
     )

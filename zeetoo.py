@@ -295,10 +295,10 @@ if __name__ == '__main__':
         help='prints schtasks_command generated from config.ini file'
     )
     parser.add_argument(
-        '--verbose', '-V', action='store_true', help='shows additional messages'
+        '--verbose', '-v', action='store_true', help='shows additional messages'
     )
     parser.add_argument(
-        '--version', '-v', action='version', version='%(prog)s 0.1'
+        '--version', '-V', action='version', version='%(prog)s 0.1'
     )
     args = parser.parse_args()
     if args.verbose:
