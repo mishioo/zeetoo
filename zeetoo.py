@@ -162,7 +162,7 @@ class Backuper:
         if not dest.exists() or src.stat().st_mtime > dest.stat().st_mtime:
             # copy
             shutil.copy2(src, dest)
-            logging.debug(f"Copyied file: {src}")
+            logging.debug(f"Copied file: {src}")
         elif dest.exists() and src.stat().st_mtime < dest.stat().st_mtime:
             # rename and copy
             filetime = datetime.datetime.fromtimestamp(dest.stat().st_mtime)

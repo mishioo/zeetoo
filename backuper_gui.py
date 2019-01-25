@@ -84,7 +84,7 @@ def changed_time(
 
 
 def save(bcp: Backuper):
-    path = asksavefilename(
+    path = asksaveasfilename(
         defaultextension='ini', initialfile='config.ini',
         initialdir=str(pathlib.Path(__file__).resolve().parent),
         filetypes=[('Config files', '*.ini'), ('All files', '*.*')]
@@ -113,7 +113,11 @@ def _run(bcp: Backuper):
         run_button.config(state='normal')
     except Exception:
         logging.debug('Could not change button state')
-    
+
+
+def unschedule(bcp: Backuper):
+    bcp.unschedule()
+
 
 def run_now(bcp: Backuper):
     thread = threading.Thread(target=_run, args=[bcp])
@@ -157,14 +161,20 @@ if __name__ == '__main__':
 
     source_frame = tk.Frame(root)
     source_frame.grid(row=1, column=0, sticky='nwes')
-    source_label = tk.LabelFrame(source_frame, text='Source')
+    source_label = tk.LabelFrame(
+        source_frame, text='Source files and directories:'
+    )
     source_label.grid(row=0, column=0, sticky='nwes')
     source = ttk.Treeview(source_label)
     source.grid(row=0, column=0, sticky='nwse')
     source['show'] = 'tree'
+    source_bar = ttk.Scrollbar(
+        source_label, orient='vertical', command=source.yview
+    )
+    source_bar.grid(row=0, column=1, sticky='nse')
     buttons_frame = tk.Frame(source_frame)
     buttons_frame.grid(row=0, column=1, pady=7, sticky='nwse')
-    add_file_butt = make_button(buttons_frame, 'Add files', 0, 1,
+    add_file_butt = make_button(buttons_frame, 'Add Files', 0, 1,
                                 command=lambda: add_file(source, backuper))
     add_dir_butt = make_button(buttons_frame, 'Add Folder', 1, 1,
                                command=lambda: add_dir(source, backuper))
@@ -181,12 +191,18 @@ if __name__ == '__main__':
 
     ignored_frame = tk.Frame(root)
     ignored_frame.grid(row=2, column=0, sticky='nwe')
-    ignored_label = tk.LabelFrame(ignored_frame, text='Ignored')
+    ignored_label = tk.LabelFrame(
+        ignored_frame, text='Ignored files and directories:'
+    )
     ignored_label.grid(row=0, column=0, sticky='nwes')
     ignored = ttk.Treeview(ignored_label)
     ignored['show'] = 'tree'
     ignored.grid(row=0, column=0, sticky='nwse')
     ignored.config(height=5)
+    source_bar = ttk.Scrollbar(
+        ignored_label, orient='vertical', command=ignored.yview
+    )
+    source_bar.grid(row=0, column=1, sticky='nse')
     buttons_frame = tk.Frame(ignored_frame)
     buttons_frame.grid(row=0, column=1, pady=7, sticky='nwes')
     ignore_file_butt = make_button(
@@ -204,11 +220,11 @@ if __name__ == '__main__':
     tk.Grid.columnconfigure(ignored_frame, 0, weight=1)
     tk.Grid.columnconfigure(ignored_label, 0, weight=1)
 
-    bottom_frame = tk.Frame(root)
-    bottom_frame.grid(row=3, column=0, sticky='nwes')
-    tk.Label(bottom_frame, text='Period').grid(row=0, column=0)
+    time_frame = tk.Frame(root)
+    time_frame.grid(row=3, column=0, sticky='nwes')
+    tk.Label(time_frame, text='Backup frequency: ').grid(row=0, column=0)
     period_var = tk.StringVar()
-    period_box = ttk.Combobox(bottom_frame, textvariable=period_var)
+    period_box = ttk.Combobox(time_frame, textvariable=period_var)
     period_box['values'] = ['DAILY', 'WEEKLY', 'MONTHLY']
     period_box.grid(row=0, column=1)
     period_box.config(width=11)
@@ -216,9 +232,9 @@ if __name__ == '__main__':
         '<<ComboboxSelected>>',
         lambda e: changed_time(period_var, hour_var, min_var, backuper)
     )
-    tk.Label(bottom_frame, text='Hour:').grid(row=0, column=2)
+    tk.Label(time_frame, text='Hour: ').grid(row=0, column=2)
     hour_var = tk.StringVar()
-    hour_box = ttk.Combobox(bottom_frame, textvariable=hour_var)
+    hour_box = ttk.Combobox(time_frame, textvariable=hour_var)
     hour_box['values'] = [f'{x:0>2}' for x in range(1, 25)]
     hour_box.grid(row=0, column=3)
     hour_box.config(width=3)
@@ -226,9 +242,9 @@ if __name__ == '__main__':
         '<<ComboboxSelected>>',
         lambda e: changed_time(period_var, hour_var, min_var, backuper)
     )
-    tk.Label(bottom_frame, text='Min:').grid(row=0, column=4)
+    tk.Label(time_frame, text='Min: ').grid(row=0, column=4)
     min_var = tk.StringVar()
-    min_box = ttk.Combobox(bottom_frame, textvariable=min_var)
+    min_box = ttk.Combobox(time_frame, textvariable=min_var)
     min_box['values'] = [f'{x:0>2}' for x in range(0, 60, 5)]
     min_box.grid(row=0, column=5)
     min_box.config(width=3)
@@ -236,19 +252,24 @@ if __name__ == '__main__':
         '<<ComboboxSelected>>',
         lambda e: changed_time(period_var, hour_var, min_var, backuper)
     )
-    save_button = make_button(bottom_frame, 'Save Config', 0, 10,
-                              command=lambda: save(backuper))
-    load_button = make_button(bottom_frame, 'Load Config', 0, 9,
-                              command=lambda: load(backuper))
+    bottom_frame = tk.Frame(root)
+    bottom_frame.grid(row=4, column=0, sticky='nwes')
+    sched_button = make_button(bottom_frame, 'Schedule', 0, 0,
+                               command=lambda: schedule(backuper))
+    unsched_button = make_button(bottom_frame, 'Unschedule', 0, 1,
+                                 command=lambda: unschedule(backuper))
     run_text_var = tk.StringVar()
     run_text_var.set('Run Now')
-    run_button = make_button(bottom_frame, '', 0, 7, textvariable=run_text_var,
+    run_button = make_button(bottom_frame, '', 0, 2, textvariable=run_text_var,
                              command=lambda: run_now(backuper))
-    sched_button = make_button(bottom_frame, 'Schedule', 0, 6,
-                               command=lambda: schedule(backuper))
-    tk.Frame(bottom_frame).grid(row=0, column=8, sticky='we')
-    tk.Grid.columnconfigure(bottom_frame, 8, weight=1)
+    tk.Frame(bottom_frame).grid(row=0, column=3, sticky='we')
+    load_button = make_button(bottom_frame, 'Load Config', 0, 4,
+                              command=lambda: load(backuper))
+    save_button = make_button(bottom_frame, 'Save Config', 0, 5,
+                              command=lambda: save(backuper))
+    tk.Grid.columnconfigure(bottom_frame, 3, weight=1)
     tk.Grid.rowconfigure(bottom_frame, 0, weight=1)
+
     logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
     backuper = Backuper(
         pathlib.Path(__file__).resolve().with_name('config.ini')
