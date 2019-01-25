@@ -146,7 +146,14 @@ class Backuper:
                                                'internally.'
         logging.info(msg)
         for path, mode in self.sources:
-            dest = pathlib.Path(basedest, path.name)
+            if mode == 'f':
+                logging.info(f'Moving to next source: {path}')
+                dest = pathlib.Path(basedest, path.parent.name, path.name)
+                if not dest.parent.exists():
+                    dest.parent.mkdir(parents=True)
+                    logging.debug(f"Dir created: {dest.parent}")
+            else:
+                dest = pathlib.Path(basedest, path.name)
             copyist = self._copyists[mode]
             copyist(path, dest)
         logging.info('Backup done.')

@@ -3,7 +3,8 @@ import pathlib
 import threading
 import tkinter as tk
 import tkinter.ttk as ttk
-from tkinter.filedialog import askopenfilename, askdirectory, asksaveasfilename
+from tkinter.filedialog import (askopenfilename, askopenfilenames,
+                                askdirectory, asksaveasfilename)
 
 from zeetoo import Backuper
 
@@ -28,6 +29,14 @@ def choose_dest(dest: tk.StringVar, bcp: Backuper):
 def changed_dest(dest: tk.StringVar, bcp: Backuper):
     path = dest.get()
     bcp.destination = path
+    
+    
+def add_file(tree: ttk.Treeview, bcp: Backuper):
+    paths = askopenfilenames()
+    for path in paths:
+        if str(pathlib.Path(path).resolve()) not in bcp.config['SOURCE']:
+            path = bcp.add_source(path, 'f')
+            tree.insert('', 'end', text=str(path))
 
 
 def add_dir(tree: ttk.Treeview, bcp: Backuper):
@@ -45,10 +54,11 @@ def add_tree(tree: ttk.Treeview, bcp: Backuper):
 
 
 def add_ignored_file(tree: ttk.Treeview, bcp: Backuper):
-    path = askopenfilename()
-    if path and str(pathlib.Path(path).resolve()) not in bcp.ignored:
-        path = bcp.add_ignored(path)
-        tree.insert('', 'end', text=str(path))
+    paths = askopenfilenames()
+    for path in paths:
+        if str(pathlib.Path(path).resolve()) not in bcp.ignored:
+            path = bcp.add_ignored(path)
+            tree.insert('', 'end', text=str(path))
 
 
 def add_ignored_dir(tree: ttk.Treeview, bcp: Backuper):
@@ -74,15 +84,13 @@ def changed_time(
 
 
 def save(bcp: Backuper):
-    # TO DO: make it ask for filename
-    run_text_var.set('Running...')
-    run_button.config(state='disabled')
-    bcp.save_config()
-    try:
-        run_text_var.set('Run Now')
-        run_button.config(state='normal')
-    except Exception:
-        logging.debug('Could not change button state')
+    path = asksavefilename(
+        defaultextension='ini', initialfile='config.ini',
+        initialdir=str(pathlib.Path(__file__).resolve().parent),
+        filetypes=[('Config files', '*.ini'), ('All files', '*.*')]
+    )
+    if path:
+        bcp.save_config()
 
 
 def load(bcp: Backuper):
@@ -97,14 +105,19 @@ def schedule(bcp: Backuper):
 
     
 def _run(bcp: Backuper):
+    run_text_var.set('Running...')
+    run_button.config(state='disabled')
     bcp.backup()
+    try:
+        run_text_var.set('Run Now')
+        run_button.config(state='normal')
+    except Exception:
+        logging.debug('Could not change button state')
     
 
 def run_now(bcp: Backuper):
-    # TO DO: make it thread, disable run button
     thread = threading.Thread(target=_run, args=[bcp])
     thread.start()
-    
 
 
 def fill_gui(bcp: Backuper):
@@ -151,12 +164,14 @@ if __name__ == '__main__':
     source['show'] = 'tree'
     buttons_frame = tk.Frame(source_frame)
     buttons_frame.grid(row=0, column=1, pady=7, sticky='nwse')
-    add_dir_butt = make_button(buttons_frame, 'Add Folder', 0, 1,
+    add_file_butt = make_button(buttons_frame, 'Add files', 0, 1,
+                                command=lambda: add_file(source, backuper))
+    add_dir_butt = make_button(buttons_frame, 'Add Folder', 1, 1,
                                command=lambda: add_dir(source, backuper))
-    add_tree_burr = make_button(buttons_frame, 'Add Folder Tree', 1, 1,
+    add_tree_burr = make_button(buttons_frame, 'Add Folder Tree', 2, 1,
                                 command=lambda: add_tree(source, backuper))
     remove_butt = make_button(
-        buttons_frame, 'Remove Selected', 2, 1,
+        buttons_frame, 'Remove Selected', 3, 1,
         command=lambda: remove_item(source, backuper, 'SOURCE')
     )
     tk.Grid.columnconfigure(source_frame, 0, weight=1)
@@ -175,7 +190,7 @@ if __name__ == '__main__':
     buttons_frame = tk.Frame(ignored_frame)
     buttons_frame.grid(row=0, column=1, pady=7, sticky='nwes')
     ignore_file_butt = make_button(
-        buttons_frame, 'Add File', 0, 1,
+        buttons_frame, 'Add Files', 0, 1,
         command=lambda: add_ignored_file(ignored, backuper)
     )
     ignore_dir_butt = make_button(
@@ -235,7 +250,6 @@ if __name__ == '__main__':
     tk.Grid.columnconfigure(bottom_frame, 8, weight=1)
     tk.Grid.rowconfigure(bottom_frame, 0, weight=1)
     logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
-    # logging.getLogger().setLevel(logging.INFO)
     backuper = Backuper(
         pathlib.Path(__file__).resolve().with_name('config.ini')
     )
