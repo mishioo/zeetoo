@@ -40,24 +40,29 @@ class Backuper:
         }
 
     @property
-    def configfile(self):
+    def configfile(self) -> pathlib.Path:
         return self.__configfile
 
     @configfile.setter
-    def configfile(self, path):
-        self.__configfile = pathlib.Path(path)
+    def configfile(self, path) -> None:
+        self.__configfile = pathlib.Path(path).resolve()
 
-    def save_config(self, file: str) -> None:
-        with open(file, 'w') as configfile:
+    def save_config(self, file: str = '') -> None:
+        if file:
+            self.configfile = file
+        with open(self.configfile, 'w') as configfile:
             self.config.write(configfile)
-        logging.debug(f'Config saved to {file}')
+        logging.debug(f'Config saved to {self.configfile}')
 
-    def load_config(self, file: str) -> None:
-        self.config = configparser.ConfigParser(
+    def load_config(self, file: str = '') -> None:
+        file = file if file else self.configfile
+        config = configparser.ConfigParser(
             allow_no_value=True, delimiters=('=',)
         )
         with open(file, 'r') as configfile:
-            self.config.read_file(configfile)
+            config.read_file(configfile)
+        self.configfile = file
+        self.config = config
         logging.debug(f'Config loaded from {file}')
 
     @property
@@ -73,11 +78,19 @@ class Backuper:
         logging.debug(f'Destination set to {destination}')
 
     @property
-    def ignored(self):
+    def sources(self) -> iter:
+        return (
+            (pathlib.Path(path), mode) for path, mode
+            in self.config['SOURCE'].items()
+            if path not in self.ignored
+        )
+
+    @property
+    def ignored(self) -> set:
         return set(self.config['IGNORE'])
 
     def add_source(self, source: str, mode: str) -> pathlib.Path:
-        if not mode in ('f', 'd', 'r'):
+        if mode not in ('f', 'd', 'r'):
             raise ValueError(
                 "Invalid mode. Mode should be one of: 'f', 'd', 'r'"
             )
@@ -100,23 +113,49 @@ class Backuper:
     def remove_ignored(self, ignored: str) -> bool:
         return self.config.remove_option('IGNORED', ignored)
 
+    def count_files(self, directory: pathlib.Path = None) -> int:
+        ignored = self.ignored
+        if directory is None:
+            files = len([path for path, mode in self.sources if path.is_file()])
+            dirs = (
+                (path, mode) for path, mode in self.sources if path.is_dir()
+            )
+            for directory, mode in dirs:
+                if mode == 'd':
+                    files += len([
+                        path for path in directory.iterdir() if path.is_file()
+                        and str(path) not in ignored
+                    ])
+                elif mode == 'r':
+                    files += self.count_files(directory)
+                else:
+                    raise ValueError(f"Invalid mode for directory {mode}")
+        else:
+            files = len([path for path in directory.iterdir() if path.is_file()
+                         and str(path) not in self.ignored])
+            dirs = (path for path in directory.iterdir() if path.is_dir()
+                    and str(path) not in self.ignored)
+            for path in dirs:
+                files += self.count_files(path)
+        return files
+
     def backup(self) -> None:
         basedest = pathlib.Path(self.config['BACKUP']['destination'])
-        source = (
-            (path, mode) for path, mode in self.config['SOURCE'].items()
-            if path not in self.ignored
-        )  # generators 4 the win
-        for path, mode in source:
-            src = pathlib.Path(path)
-            dest = pathlib.Path(basedest, src.name)
+        msg = f'Starting backup using {self.configfile.name} specification.' \
+              if self.configfile.exists() else 'Starting backup as specified ' \
+                                               'internally.'
+        logging.info(msg)
+        for path, mode in self.sources:
+            dest = pathlib.Path(basedest, path.name)
             copyist = self._copyists[mode]
-            copyist(src, dest)
+            copyist(path, dest)
+        logging.info('Backup done.')
 
     def copy_file(self, src: pathlib.Path, dest: pathlib.Path) -> None:
         if not dest.exists() or src.stat().st_mtime > dest.stat().st_mtime:
             # copy
-            logging.debug(f"Copyied file: {src}")
             shutil.copy2(src, dest)
+            logging.debug(f"Copyied file: {src}")
         elif dest.exists() and src.stat().st_mtime < dest.stat().st_mtime:
             # rename and copy
             filetime = datetime.datetime.fromtimestamp(dest.stat().st_mtime)
@@ -137,6 +176,7 @@ class Backuper:
             pass
 
     def copy_directory(self, src: pathlib.Path, dest: pathlib.Path) -> None:
+        logging.info(f'Moving to next source: {src}')
         if not dest.exists():
             dest.mkdir(parents=True)
             logging.debug(f"Dir created: {dest}")
@@ -149,21 +189,13 @@ class Backuper:
 
     def copy_recursive(self, src: pathlib.Path, dest: pathlib.Path) -> None:
         # log 'debug: copying recursively {dir}'
-        if not dest.exists():
-            dest.mkdir(parents=True)
-            logging.debug(f"Dir created: {dest}")
-        files = (
-            path for path in src.iterdir()
-            if path.is_file() and not str(path) in self.ignored
-        )
-        for file in files:
-            self.copy_file(file, pathlib.Path(dest, file.name))
+        self.copy_directory(src, dest)
         dirs = (
             path for path in src.iterdir()
             if path.is_dir() and not str(path) in self.ignored
         )
-        for dir in dirs:
-            self.copy_directory(dir, pathlib.Path(dest, dir.name))
+        for dir_ in dirs:
+            self.copy_recursive(dir_, pathlib.Path(dest, dir_.name))
 
     def set_time(
             self, period: str = None, hour: int = None, minute: int = None
@@ -179,7 +211,7 @@ class Backuper:
 
     @property
     def task_name(self) -> str:
-        if not 'taskname' in self.config['BACKUP']:
+        if 'taskname' not in self.config['BACKUP']:
             raise ValueError('Task name not specified.')
         else:
             return self.config['BACKUP']['taskname']
@@ -200,8 +232,8 @@ class Backuper:
         return cmd
 
     def schedule(self) -> None:
+        self.save_config()
         cmd = self.schtasks_command
-        self.save_config(self.configfile)
         subprocess.run(cmd, check=True)
 
     def unschedule(self) -> None:
@@ -263,9 +295,14 @@ if __name__ == '__main__':
         help='prints schtasks_command generated from config.ini file'
     )
     parser.add_argument(
+        '--verbose', '-V', action='store_true', help='shows additional messages'
+    )
+    parser.add_argument(
         '--version', '-v', action='version', version='%(prog)s 0.1'
     )
     args = parser.parse_args()
+    if args.verbose:
+        logging.getLogger().setLevel(logging.INFO)
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
     backuper = Backuper(args.configfile)
@@ -276,18 +313,14 @@ if __name__ == '__main__':
     if args.destination:
         backuper.destination = args.destination
     if args.add:
-        for path in args.add:
-            backuper.add_source(path, 'd')
+        for arg in args.add:
+            backuper.add_source(arg, 'd')
     if args.recursively:
-        for path in args.recursively:
-            backuper.add_source(path, 'r')
+        for arg in args.recursively:
+            backuper.add_source(arg, 'r')
     if args.ignore:
-        for path in args.ignore:
-            backuper.add_ignored(path)
-    if args.debug:
-        print(f'Backuper for task: {backuper.task_name}')
-        print(f'Backup destination: {backuper.destination}')
-        print(f'Command: {backuper.schtasks_command}')
+        for arg in args.ignore:
+            backuper.add_ignored(arg)
     if args.schedule:
         backuper.schedule()
     if args.unschedule:
