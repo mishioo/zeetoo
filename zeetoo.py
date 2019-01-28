@@ -73,7 +73,8 @@ class Backuper:
     def destination(self, destination: str) -> None:
         path = pathlib.Path(destination)
         if not path.exists():
-            raise FileNotFoundError('Backup destination directory must exist.')
+            path.mkdir(parents=True)
+            logging.debug("Created backup destination directory.")
         self.config['BACKUP']['destination'] = str(path.resolve())
         logging.debug(f'Destination set to {destination}')
 

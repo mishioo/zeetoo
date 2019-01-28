@@ -149,11 +149,9 @@ if __name__ == '__main__':
     dest_frame.grid(row=0, column=0, sticky='nwe')
     tk.Label(dest_frame, text='Destination').grid(row=0, column=0, sticky='w')
     dest_var = tk.StringVar()
-    dest_entry = tk.Entry(dest_frame, textvariable=dest_var,
-                          validate="focusout",
-                          validatecommand=lambda: changed_dest(dest_var,
-                                                               backuper))
+    dest_entry = tk.Entry(dest_frame, textvariable=dest_var)
     dest_entry.grid(row=0, column=1, sticky='we')
+    dest_entry.bind('<FocusOut>', lambda e: changed_dest(dest_var, backuper))
     choose = make_button(dest_frame, 'Choose', 0, 2, 'we',
                          command=lambda: choose_dest(dest_var, backuper))
     tk.Grid.columnconfigure(dest_frame, 1, weight=1)
