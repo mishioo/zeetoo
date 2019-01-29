@@ -16,7 +16,7 @@ Next, download this script as zip file using 'Clone or download' button on this 
 
 To start up graphical user interface (GUI) dubble-click on start_gui.bat file. A window similar to this one should appear:
 
-[screenshot](https://raw.githubusercontent.com/Mishioo/zeetoo/assets/screenshot.png)
+![screenshot](https://raw.githubusercontent.com/Mishioo/zeetoo/assets/screenshot.png)
 
 1. This field shows path to backup's main directory. Files will be copied there. You can change this field directly or by clicking 2.
 2. Choose backup destination directory using graphical interface.
