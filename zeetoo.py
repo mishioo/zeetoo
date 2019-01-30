@@ -147,6 +147,9 @@ class Backuper:
                                                'internally.'
         logging.info(msg)
         for path, mode in self.sources:
+            if not path.exists():
+                logging.warning(f"Specified source not found: {path}")
+                continue
             if mode == 'f':
                 logging.info(f'Moving to next source: {path}')
                 dest = pathlib.Path(basedest, path.parent.name, path.name)
@@ -272,7 +275,8 @@ if __name__ == '__main__':
         help="files and folders ignored"
     )
     parser.add_argument(
-        '--taskname', '-n', help='name of the task scheduled'
+        '--taskname', '-n',
+        help='name of the task scheduled, defaults to "zeetoo backup"'
     )
     parser.add_argument(
         '--period', '-p', choices=['once', 'daily', 'weekly', 'monthly'],
@@ -292,7 +296,7 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '--unschedule', '-u', action='store_true',
-        help='runs backup specified in config.ini file'
+        help='removes backup task of specified task name from schedule'
     )
     parser.add_argument(
         '--run-backup', '-b', action='store_true', dest='run',
