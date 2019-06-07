@@ -9,19 +9,6 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 
 
-def conf_search(mol, num=100):
-    confs = []
-    for __ in range(num):
-        cid = AllChem.EmbedMolecule(mol, clearConfs=False)
-        mp = AllChem.MMFFGetMoleculeProperties(mol)
-        ff = AllChem.MMFFGetMoleculeForceField(mol, mp, confId=cid)
-        ff.Initialize()
-        min_out = ff.Minimize()
-        confs.append((cid, ff.CalcEnergy(), min_out))
-        lgg.info(f'Search progress: {cid}/{num}')
-    return sorted(confs, key=lambda x: x[1])
-    
-    
 def get_args(argv=None):
     prsr = argparse.ArgumentParser(
         description="Perform a conformational search on given molecules."
@@ -63,23 +50,9 @@ def get_args(argv=None):
     )
     return prsr.parse_args(argv)
     
-    
-def rms_violated(molecule, conf_id, treshold):
-    noh = Chem.RemoveHs(molecule)
-    prb = Chem.Mol(noh)
-    prb.RemoveAllConformers()
-    prb.AddConformer(noh.GetConformer(conf_id))
-    noh.RemoveConformer(conf_id)
-    # other options are AllChem.GetConformerRMS and AllChem.AlignMol
-    for conf in noh.GetConformers():
-        rms =  AllChem.GetBestRMS(prb, noh, refId=conf.GetId())
-        if rms < treshold:
-            return conf.GetId()
-    return None
-    
-    
+
 def find_lowest_energy_conformer(
-        molecule, num_confs, rms_tresh, energy_window, max_cycles
+        molecule, num_confs, rms_tresh, max_cycles
 ):
     ids = AllChem.EmbedMultipleConfs(
         molecule, numConfs=num_confs, pruneRmsThresh=rms_tresh
@@ -97,20 +70,12 @@ def find_lowest_energy_conformer(
         for cycle in range(max_cycles):
             if not ff.Minimize():
                 # ff.Minimize() returns 0 on success
-                # lgg.debug(f"Conf {cid} minimized on cycle {cycle + 1}.")
                 break
         else:
             molecule.RemoveConformer(cid)
             lgg.debug(f"Conf {cid} ignored: ff.Minimize() unsuccessfull")  
             continue
         energy = ff.CalcEnergy()
-        if energy > min_en + energy_window:
-            molecule.RemoveConformer(cid)
-            lgg.debug(
-                f"Conf {cid} ignored: energy {energy} "
-                f"higher than theshold {min_en + energy_window}"
-            )
-            continue
         lgg.debug(f"Conf {cid} lowest energy: {energy}")
         energies[cid] = energy
         if energy < min_en:
@@ -149,7 +114,16 @@ def rms_sieve(molecule, energies, threshold):
     
     
 def energy_sieve(molecule, energies, threshold):
-    pass
+    minen = min(energies.values())
+    maxen = minen + threshold
+    for cid, en in energies.items():
+        if en > maxen:
+            molecule.RemoveConformer(cid)
+            lgg.debug(
+                f"Conf {cid} ignored: energy {en} "
+                f"higher than theshold {maxen}"
+            )
+    return molecule
     
     
 def main(argv=None):
@@ -201,10 +175,20 @@ def main(argv=None):
             lgg.debug(f"Stereochemistry found: {Chem.FindMolChiralCenters(m)}")
             
             m, cid, en, ens = find_lowest_energy_conformer(
-                m, args.num_confs, args.rms_tresh, args.energy_window,
-                args.max_cycles
+                m, args.num_confs, args.rms_tresh, args.max_cycles
             )
-            m = rms_sieve(m, ens, args.rms_tresh)
+            num = m.GetNumConformers()
+            lgg.info(f"Number of conformers optimized: {num}")
+            m = energy_sieve(m, ens, args.energy_window)
+            lgg.info(
+                f"{num-m.GetNumConformers()} conformers outside energy window."
+            )
+            num = m.GetNumConformers()
+            m = rms_sieve(m, ens, args.energy_window)
+            lgg.info(
+                f"{num-m.GetNumConformers()} conformers discarded by "
+                "RMS sieve."
+            )
             lgg.info(f"Number of conformers generated: {m.GetNumConformers()}")
             molrepr = Chem.MolToMolBlock(m, confId=cid)
             outfile = args.output_dir + '\\' + mol.split('.')[-2] + '_min_conf.mol'
