@@ -3,6 +3,7 @@ import csv
 import os
 import time
 import logging as lgg
+from math import floor, sqrt
 import rdkit
 from rdkit import Chem
 from rdkit.Chem import AllChem
@@ -63,6 +64,20 @@ def get_args(argv=None):
     return prsr.parse_args(argv)
     
     
+def rms_violated(molecule, conf_id, treshold):
+    noh = Chem.RemoveHs(molecule)
+    prb = Chem.Mol(noh)
+    prb.RemoveAllConformers()
+    prb.AddConformer(noh.GetConformer(conf_id))
+    noh.RemoveConformer(conf_id)
+    # other options are AllChem.GetConformerRMS and AllChem.AlignMol
+    for conf in noh.GetConformers():
+        rms =  AllChem.GetBestRMS(prb, noh, refId=conf.GetId())
+        if rms < treshold:
+            return conf.GetId()
+    return None
+    
+    
 def find_lowest_energy_conformer(
         molecule, num_confs, rms_tresh, energy_window, max_cycles
 ):
@@ -71,6 +86,7 @@ def find_lowest_energy_conformer(
     )
     lgg.info("Conformers initialized, starting minimization.")
     min_en, min_id = float('inf'), -1
+    energies = {}
     stereo = Chem.FindMolChiralCenters(molecule)
     mp = AllChem.MMFFGetMoleculeProperties(molecule)
     for cid in ids:
@@ -81,27 +97,22 @@ def find_lowest_energy_conformer(
         for cycle in range(max_cycles):
             if not ff.Minimize():
                 # ff.Minimize() returns 0 on success
-                lgg.debug(f"Conf {cid} minimized on cycle {cycle + 1}.")
+                # lgg.debug(f"Conf {cid} minimized on cycle {cycle + 1}.")
                 break
         else:
+            molecule.RemoveConformer(cid)
             lgg.debug(f"Conf {cid} ignored: ff.Minimize() unsuccessfull")  
-            continue
-        Chem.AssignStereochemistryFrom3D(molecule, confId=cid)
-        if stereo != Chem.FindMolChiralCenters(molecule):
-            lgg.debug(f"Conf {cid} ignored: stereochemistry violation.")
             continue
         energy = ff.CalcEnergy()
         if energy > min_en + energy_window:
+            molecule.RemoveConformer(cid)
             lgg.debug(
                 f"Conf {cid} ignored: energy {energy} "
-                f"higher than {min_en + energy_window}"
+                f"higher than theshold {min_en + energy_window}"
             )
             continue
         lgg.debug(f"Conf {cid} lowest energy: {energy}")
-        # rms =  AllChem.GetConformerRMS(molecule, cid, min_id)
-        # if rms_tresh > rms:
-            # lgg.debug(f"conf {cid} ignored: rmsd higher than threshhold: {rms}")
-            # continue
+        energies[cid] = energy
         if energy < min_en:
             lgg.debug(f"Conf {cid} is new min with energy {energy}")
             min_en, min_id = energy, cid
@@ -111,7 +122,34 @@ def find_lowest_energy_conformer(
     lgg.info(
         f"Lowest conformer found: {min_en} kcal/mol"
     )
-    return molecule, min_id, min_en
+    return molecule, min_id, min_en, energies
+    
+
+def rms_sieve(molecule, energies, threshold):
+    AllChem.AlignMolConformers(molecule)
+    noh = Chem.RemoveHs(molecule)
+    rmsmatrix = AllChem.GetConformerRMSMatrix(noh)
+    lgg.debug(f"RMS matrix min: {min(rmsmatrix)}")
+    for i, rms in enumerate(rmsmatrix):
+        first = floor((sqrt(8*i+1) - 1) / 2)
+        second = i - first * (first + 1) // 2
+        first += 1
+        if rms > threshold:
+            continue
+        try:
+            fen = energies[first]
+            sen = energies[second]
+        except KeyError:
+            continue
+        throwaway = first if fen > sen else second
+        molecule.RemoveConformer(throwaway)
+        del energies[throwaway]
+        lgg.debug(f"Conf {throwaway} ignored: rms under threshold.")
+    return molecule
+    
+    
+def energy_sieve(molecule, energies, threshold):
+    pass
     
     
 def main(argv=None):
@@ -160,42 +198,28 @@ def main(argv=None):
                 atoms[atnum] = atoms.get(atnum, 0) + 1
             lgg.debug(f"atoms in structure: {atoms}")
             Chem.AssignStereochemistryFrom3D(m)
-            lgg.info(f"Stereochemistry found: {Chem.FindMolChiralCenters(m)}")
+            lgg.debug(f"Stereochemistry found: {Chem.FindMolChiralCenters(m)}")
             
-            m, cid, en = find_lowest_energy_conformer(
+            m, cid, en, ens = find_lowest_energy_conformer(
                 m, args.num_confs, args.rms_tresh, args.energy_window,
                 args.max_cycles
             )
+            m = rms_sieve(m, ens, args.rms_tresh)
+            lgg.info(f"Number of conformers generated: {m.GetNumConformers()}")
             molrepr = Chem.MolToMolBlock(m, confId=cid)
-            outfile = mol.split('.')
-            outfile = args.output_dir + '\\' + outfile[-2] + '_min_conf.mol'
+            outfile = args.output_dir + '\\' + mol.split('.')[-2] + '_min_conf.mol'
             with open(outfile, 'w') as file:
                 file.write(molrepr)
             lgg.info(f"Lowest energy conformer saved to {outfile}")
             report.write(
                 f"{name: <{longest}} = {en: > 13.8f} kcal/mol\n"
             )
+            sdfile = args.output_dir + '\\' + mol.split('.')[-2] + '_confs.sdf'
+            writer = Chem.SDWriter(sdfile)
+            for conf in m.GetConformers():
+                writer.write(m, confId=conf.GetId())
     
     
 if __name__ == '__main__':
 
     main()
-
-    # if len(sys.argv) == 2:
-        # num_conf = int(sys.argv[1])
-    # else:
-        # num_conf = 10
-    # mol = Chem.AddHs(Chem.MolFromMolFile(r'D:\Obliczenia\AU-GalCy\AU-GalCy.mol'))
-    # lgg.info("Molecule loaded, initializing search.")
-    # confs = conf_search(mol, num_conf)
-    # best = confs[0][0]
-    # kept = 1
-    # with open(r'D:\Obliczenia\AU-GalCy\list.txt', 'w', newline='') as lsfile:
-        # lswriter = csv.writer(lsfile, delimiter='\t')
-        # cfwriter = AllChem.SDWriter(r'D:\Obliczenia\AU-GalCy\conformers.sdf')
-        # for cid, en, min_out in confs:
-            # rms = AllChem.GetConformerRMS(mol, best, cid, prealigned=True)
-            # if rms > 0.1: kept += 1
-            # lswriter.writerow((cid, en, min_out, rms))
-            # cfwriter.write(mol, confId=cid)
-    # lgg.info(f'RMS calculated, kpet = {kept}')
