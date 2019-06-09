@@ -67,10 +67,10 @@ def save_molecule(
 def main(argv: list = None):
     args = get_args(argv)
     args.out_dir.mkdir(exist_ok=True)
-    gjfname = args.name if args.name is not None else sdf.stem
-    out_dir = args.out_dir if args.out_dir is not None else sdf.parent
+    gjfname = args.name if args.name is not None else args.sdf.stem
+    out_dir = args.out_dir if args.out_dir is not None else args.sdf.parent
     for num, mol in enumerate(get_molecules(args.sdf)):
-        output_file = args.out_dir / (args.name + f'{num:0>3}.gjf')
+        output_file = args.out_dir / (gjfname + f'{num:0>3}.gjf')
         save_molecule(
             dest=output_file,
             charge=args.charge,
