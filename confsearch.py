@@ -92,13 +92,13 @@ def find_lowest_energy_conformer(
 
 def rms_sieve(molecule, energies, threshold):
     AllChem.AlignMolConformers(molecule)
+    indices = {n: c.GetId() for n, c in enumerate(molecule.GetConformers())}
     noh = Chem.RemoveHs(molecule)
     rmsmatrix = AllChem.GetConformerRMSMatrix(noh)
-    lgg.debug(f"RMS matrix min: {min(rmsmatrix)}")
     for i, rms in enumerate(rmsmatrix):
         first = floor((sqrt(8*i+1) - 1) / 2)
-        second = i - first * (first + 1) // 2
-        first += 1
+        second = indices[i - first * (first + 1) // 2]
+        first = indices[first + 1]
         if rms > threshold:
             continue
         try:
@@ -149,8 +149,8 @@ def main(argv=None):
     
     os.makedirs(args.output_dir, exist_ok=True)
     report_file = args.output_dir + '\\' + \
-        f'confsearch_report_{int(time.time())}.txt'
-    with open(report_file, 'a') as report:
+        f'confsearch_report.txt'
+    with open(report_file, 'w') as report:
         report.write(
             f"Confsearch -- RMSD treshold   = {args.rms_tresh} Anstrom,\n"
             f"              energy window   = {args.energy_window} kcal/mol,\n"
@@ -184,21 +184,24 @@ def main(argv=None):
                 f"{num-m.GetNumConformers()} conformers outside energy window."
             )
             num = m.GetNumConformers()
-            m = rms_sieve(m, ens, args.energy_window)
+            m = rms_sieve(m, ens, args.rms_tresh)
             lgg.info(
                 f"{num-m.GetNumConformers()} conformers discarded by "
                 "RMS sieve."
             )
             lgg.info(f"Number of conformers generated: {m.GetNumConformers()}")
             molrepr = Chem.MolToMolBlock(m, confId=cid)
-            outfile = args.output_dir + '\\' + mol.split('.')[-2] + '_min_conf.mol'
+            molfilename = mol.split('\\')[-1]
+            outfile = args.output_dir + '\\' + molfilename.split('.')[-2] \
+                + '_min_conf.mol'
             with open(outfile, 'w') as file:
                 file.write(molrepr)
             lgg.info(f"Lowest energy conformer saved to {outfile}")
             report.write(
                 f"{name: <{longest}} = {en: > 13.8f} kcal/mol\n"
             )
-            sdfile = args.output_dir + '\\' + mol.split('.')[-2] + '_confs.sdf'
+            sdfile = args.output_dir + '\\' + molfilename.split('.')[-2] \
+                + '_confs.sdf'
             writer = Chem.SDWriter(sdfile)
             for conf in m.GetConformers():
                 writer.write(m, confId=conf.GetId())
