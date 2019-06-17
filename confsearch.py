@@ -43,7 +43,16 @@ def get_args(argv=None):
         help='Maximum number of energy minimization cycles.'
     )
     prsr.add_argument(
-        '-v', '--verbose', action='store_true'
+        '-f', '--fixed', type=int, nargs='+', default=(),
+        help='Indices of atoms constrained.'
+    )
+    prsr.add_argument(
+        '-x', '--max_displ', type=float,
+        help='Maximum displacement of constrained atom. If not given, atoms '
+             'constrained are fixed in place.'
+    )
+    prsr.add_argument(
+        '-V', '--verbose', action='store_true'
     )
     prsr.add_argument(
         '-D', '--debug', action='store_true'
@@ -52,10 +61,11 @@ def get_args(argv=None):
     
 
 def find_lowest_energy_conformer(
-        molecule, num_confs, rms_tresh, max_cycles
+        molecule, num_confs, rms_tresh, max_cycles, coord_map, max_displ
 ):
     ids = AllChem.EmbedMultipleConfs(
-        molecule, numConfs=num_confs, pruneRmsThresh=rms_tresh
+        molecule, numConfs=num_confs, pruneRmsThresh=rms_tresh,
+        coordMap=coord_map
     )
     lgg.info("Conformers initialized, starting minimization.")
     min_en, min_id = float('inf'), -1
@@ -66,6 +76,13 @@ def find_lowest_energy_conformer(
         if cid and cid % 100 == 0:
             lgg.info(f"Minimization progress: {cid}/{len(ids)}")
         ff = AllChem.MMFFGetMoleculeForceField(molecule, mp, confId=cid)
+        for atom in coord_map:
+            if max_displ is not None:
+                ff.MMFFAddPositionConstraint(
+                    atom, maxDispl=max_displ, forceConstant=1e5
+                )
+            else:
+                ff.AddFixedPoint(atom)
         ff.Initialize()
         for cycle in range(max_cycles):
             if not ff.Minimize():
@@ -174,8 +191,12 @@ def main(argv=None):
             Chem.AssignStereochemistryFrom3D(m)
             lgg.debug(f"Stereochemistry found: {Chem.FindMolChiralCenters(m)}")
             
+            conf = m.GetConformer()
+            coord_map = {n: conf.GetAtomPosition(n) for n in args.fixed}
+            
             m, cid, en, ens = find_lowest_energy_conformer(
-                m, args.num_confs, args.rms_tresh, args.max_cycles
+                m, args.num_confs, args.rms_tresh, args.max_cycles, coord_map,
+                args.max_displ
             )
             num = m.GetNumConformers()
             lgg.info(f"Number of conformers optimized: {num}")
@@ -205,6 +226,7 @@ def main(argv=None):
             writer = Chem.SDWriter(sdfile)
             for conf in m.GetConformers():
                 writer.write(m, confId=conf.GetId())
+            writer.close()
     
     
 if __name__ == '__main__':
