@@ -6,7 +6,7 @@ import tkinter.ttk as ttk
 from tkinter.filedialog import (askopenfilename, askopenfilenames,
                                 askdirectory, asksaveasfilename)
 
-from zeetoo import Backuper
+from zeetoo.backuper import Backuper
 
 
 def make_button(master, text, row=0, column=0, sticky='nwe', textvariable=None,
