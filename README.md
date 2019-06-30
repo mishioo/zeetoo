@@ -1,18 +1,28 @@
 # zeetoo
 
+A collection of various Python scripts created as a help in everyday work in Team II IChO PAS.
+
+- [backuper.py](#backuperpy)
+    - [Geting Started](#getting-started)
+    - [Graphical User Interface](#graphical-user-interface)
+    - [Command Line Tool](#command-line-tool)
+    - [Python API](#python-api)
+- [confsearch.py](#confsearchpy)
+- [fixgvmol.py](#fixgvmolpy)
+- [gofproc.py](#gofprocpy)
+- [sdf_to_gjf.py](#sdf_to_gjfpy)
+- [License](#license)
+
+## backuper.py
+
 Simple Ptyhon script for scheduling and running automated files backup on Windows machines. Minimal graphical user interface included.
 
-- [Geting Started](#getting-started)
-- [Graphical User Interface](#graphical-user-interface)
-- [Command Line Tool](#command-line-tool)
-- [Python API](#python-api)
-
-## Getting Started
+### Getting Started
 
 To use this script you will need a Python 3 interpreter, you can download an installer of lastest version on [python.org](https://www.python.org) (a shortcut to direct download for Windows: [link](https://www.python.org/ftp/python/3.7.2/python-3.7.2.exe)). Please remember to check 'Add to PATH' during installation.
 Next, download this script as zip file using 'Clone or download' button on this site. Unzip package to desired destination, for example 'C:/Program Files/zeetoo'. And that's it, you're ready to go.
 
-## Graphical User Interface
+### Graphical User Interface
 
 To start up graphical user interface (GUI) dubble-click on start_gui.bat file. A window similar to this one should appear:
 
@@ -43,10 +53,30 @@ About conflicts solving mechanism: if file with the same name is already present
 - If both files have the same last modification time, file will not be copied.
 - If backup version is newer, it will be renamed to oldname_last-modification-time.ext and source file will be copied, preserving both versions.
 
-## Command Line Tool
+### Command Line Tool
 
-Zeetoo backup functionality is available as command line tool. For more information run 'python zeetoo.py --help'.
+Zeetoo backup functionality is available as command line tool. For more information run 'python backuper.py --help'.
 
-## Python API
+### Python API
 
 This section will be supplemented soon.
+
+## confsearch.py
+
+Performs a conformational search on set of given molecules. Requires RDkit software.
+
+## fixgvmol.py
+
+Adds mol version and END line to .mol files missing these pieces of information.
+
+## gofproc.py
+
+Extracts information about molecule energy from given set of Gaussian output files.
+
+## sdf_to_gjf.py
+
+Writes molecules contained in an .sdf file to a set of .gjf files.
+
+# License
+
+See the LICENSE.txt file for license rights and limitations (MIT).
