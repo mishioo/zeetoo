@@ -8,6 +8,10 @@ import logging as lgg
 number_group = r'\s*(-?\d+\.?\d*)'
 number = number_group.replace('(', '').replace(')', '')
 energies = re.compile(
+    r' Zero-point correction=\s*(-?\d+\.?\d*) \(Hartree/Particle\)\n'
+    r' Thermal correction to Energy=\s*(-?\d+\.?\d*)\n'
+    r' Thermal correction to Enthalpy=\s*(-?\d+\.?\d*)\n'
+    r' Thermal correction to Gibbs Free Energy=\s*(-?\d+\.?\d*)\n'
     r' Sum of electronic and zero-point Energies=\s*(-?\d+\.?\d*)\n'
     r' Sum of electronic and thermal Energies=\s*(-?\d+\.?\d*)\n'
     r' Sum of electronic and thermal Enthalpies=\s*(-?\d+\.?\d*)\n'
@@ -25,16 +29,27 @@ def get_args(argv=None):
     )
     prs.add_argument(
         'files', type=Path, nargs='+',
-        help='one or more gaussian output files or directories with such'
+        help='One or more gaussian output files or directories with such.'
     )
     prs.add_argument(
-        '--excel', '-e', type=Path, default=None,
-        help='path to excel file; if not specified output '
-             'will be printed to stdout'
+        '-f', '--file', type=Path, default=None,
+        help='Wries output to specified excel file.'
     )
     prs.add_argument(
         '-s', '--silent', action='store_true',
-        help='Suppress printing to sdtout'
+        help='Suppress printing to sdtout.'
+    )
+    prs.add_argument(
+        '-c', '--corrections', action='store_true',
+        help='Include corrections in the output.'
+    )
+    prs.add_argument(
+        '-i', '--imag_count', action='store_true',
+        help='Include number of imaginary numbers in the output.'
+    )
+    prs.add_argument(
+        '-e', '--energies', action='store_true',
+        help='Include energies values in the output.'
     )
     return prs.parse_args(argv)
 
@@ -45,7 +60,7 @@ def get_data(path):
     ens = energies.search(text)
     freqs = frequencies.findall(text)
     if not ens or not freqs:
-        lgg.info(f'{path.name} - NOT CONVERGED')
+        lgg.info(f'NOT CONVERGED: {path.name}')
         return []
     else:
         imag = sum(float(f) < 0 for line in freqs for f in line)
@@ -75,29 +90,38 @@ def main():
         length = max(len(line[0]) for line in data)
     except ValueError:
         length = 0
-    if args.excel:
-        wb = opxl.load_workbook(str(args.excel))
+    if args.file:
+        wb = opxl.load_workbook(str(args.file))
         sheet = wb.active
-    for file, zpe, ten, ent, gib, imag in data:
-        lgg.info(
-            f"{file: <{length}} - "
-            f"ZPE= {zpe: >12} "
-            f"TEN= {ten: >12} "
-            f"ENT= {ent: >12} "
-            f"GIB= {gib: >12} "
-            f"Imag.Freqs= {imag: >2} "
-        )
-        if args.excel:
+    for file, zcr, tcr, ecr, gcr, zpe, ten, ent, gib, imag in data:
+        entries = []
+        # entry: name, value, width
+        if args.energies:
+            entries.append(("ZPE", float(zpe)))
+            entries.append(("TEN", float(ten)))
+            entries.append(("ENT", float(ent)))
+            entries.append(("GIB", float(gib)))
+        if args.corrections:
+            entries.append(("ZPECORR", float(zcr)))
+            entries.append(("TENCORR", float(tcr)))
+            entries.append(("ENTCORR", float(ecr)))
+            entries.append(("GIBCORR", float(gcr)))
+        if args.imag_count:
+            entries.append(("Imag.Freqs", int(imag)))
+        if entries:
+            lgg.info(
+                ' '.join((
+                    f"{file: <{length}} -",
+                    *("{}= {}".format(*e) for e in entries)
+                ))
+            )
+        if entries and args.file:
             sheet.append([
-                file, '', #  place for comment on this file
-                float(zpe),
-                float(ten),
-                float(ent),
-                float(gib),
-                imag
+                file, '',  # place for comment on this file
+                *(e[1] for e in entries)
             ])
-    if args.excel:
-        wb.save(str(args.excel))
+    if args.file:
+        wb.save(str(args.file))
 
 
 if __name__ == '__main__':
