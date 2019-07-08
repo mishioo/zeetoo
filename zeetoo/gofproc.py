@@ -1,4 +1,5 @@
 import openpyxl as opxl
+from openpyxl.utils import column_index_from_string
 import re
 import argparse
 from itertools import chain
@@ -48,10 +49,11 @@ def get_args(argv=None):
         help='Include energies values in the output.'
     )
     prs.add_argument(
-        '-a', '--append_entry', metavar='COL', type=int,
+        '-a', '--append_entry', metavar='COL',
         help='Append output values to entry, if it already exists, otherwise '
              'add a new entry. Values will be written to sheet starting at '
-             'column COL.'
+             'column COL. Column letter or 1-based numerical index may be '
+             'given.'
     )
     log = prs.add_mutually_exclusive_group()
     log.add_argument(
@@ -102,8 +104,8 @@ def select_data(line, args):
     return entries
 
 
-def main():
-    args = get_args()
+def main(argv=None):
+    args = get_args(argv)
     lgg.basicConfig(level='WARNING' if args.silent else 'INFO')
     dirs = (path for path in args.files if path.is_dir())
     inner_files = (
@@ -125,6 +127,11 @@ def main():
         wb, sheet, owned = None, None, {}
     unconverged = []
     length = 0
+    if args.append_entry is not None:
+        try:
+            args.append_entry = int(args.append_entry)
+        except ValueError:
+            args.append_entry = column_index_from_string(args.append_entry)
     for file, entries in data:
         if not entries:  # no data extracted
             unconverged.append(file)
