@@ -252,7 +252,7 @@ class Backuper:
         subprocess.run(cmd, check=True)
 
 
-if __name__ == '__main__':
+def get_parser():
     parser = argparse.ArgumentParser(prog='zeetoo backuper')
     parser.add_argument(
         '--configfile', '-c', metavar='path', default='',
@@ -283,12 +283,14 @@ if __name__ == '__main__':
         help='how often should backup be run'
     )
     parser.add_argument(
-        '--hour', '-H', type=int, choices=range(24),
-        help='at which hour should task start'
+        '--hour', '-H', type=int, choices=range(24), metavar='H',
+        help='at which hour should task start, should be an integer between '
+             '0 and 23'
     )
     parser.add_argument(
-        '--minute', '-m', type=int, choices=range(60),
-        help='how many minutes after specified hour should task start'
+        '--minute', '-m', type=int, choices=range(60), metavar='M',
+        help='how many minutes after specified hour should task start, '
+             'should be an integer between 0 and 59'
     )
     parser.add_argument(
         '--schedule', '-s', action='store_true',
@@ -312,7 +314,11 @@ if __name__ == '__main__':
     parser.add_argument(
         '--version', '-V', action='version', version='%(prog)s 0.1'
     )
-    args = parser.parse_args()
+    return parser
+
+
+def main(argv=None):
+    args = get_parser().parse_args(argv)
     if args.verbose:
         logging.getLogger().setLevel(logging.INFO)
     if args.debug:
@@ -339,3 +345,7 @@ if __name__ == '__main__':
         backuper.unschedule()
     if args.run:
         backuper.backup()
+
+
+if __name__ == '__main__':
+    main()

@@ -29,16 +29,19 @@ def get_args(argv=None):
         help='One or more .mol files created by Gaussview or directories '
              'containing such files.'
     )
-    prs.add_argument('-v', type=str, default='V2000', help='.mol file version.')
+    prs.add_argument(
+        '-v', type=str, default='V2000',
+        help='.mol file version, default is V2000'
+    )
     prs.add_argument(
         '-s', '--silent', action='store_true',
-        help='Suppress printing to sdtout'
+        help='suppress printing to sdtout'
     )
     return prs.parse_args(argv)
 
 
-def main():
-    args = get_args()
+def main(argv=None):
+    args = get_args(argv)
     lgg.basicConfig(level='WARNING' if args.silent else 'INFO')
     dirs = (path for path in args.files if path.is_dir())
     inner_files = (
