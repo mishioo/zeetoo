@@ -14,21 +14,60 @@ from backuper import Backuper
 # ZTHOME.mkdir(parents=True, exist_ok=True)
 
 
+class JobFrame(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master)
+        self.master = master
+        label_frame = tk.LabelFrame(self, text='Backup jobs')
+        label_frame.grid(row=0, column=0, sticky='nwes')
+        self.tree = ttk.Treeview(label_frame)
+        self.tree.grid(row=0, column=0, sticky='nwse')
+        self.tree['columns'] = ('Job name', 'Status')
+        scrollbar = ttk.Scrollbar(
+            label_frame, orient='vertical', command=self.tree.yview
+        )
+        scrollbar.grid(row=0, column=1, sticky='nse')
+        buttons_frame = tk.Frame(self)
+        buttons_frame.grid(row=0, column=1, pady=7, sticky='nwse')
+        make_button(
+            buttons_frame, 'New Job', 0, 1, command=self.new_job
+        )
+        make_button(
+            buttons_frame, 'Remove Selected', 1, 1, command=self.remove_item
+        )
+        make_button(
+            buttons_frame, 'Import Config...', 2, 1, command=self.import_config
+        )
+        tk.Grid.columnconfigure(self, 0, weight=1)
+        tk.Grid.rowconfigure(self, 0, weight=1)
+        tk.Grid.columnconfigure(label_frame, 0, weight=1)
+        tk.Grid.rowconfigure(label_frame, 0, weight=1)
+
+    def new_job(self):
+        pass
+
+    def remove_item(self):
+        pass
+
+    def import_config(self):
+        pass
+
+
 class SourceFrame(tk.Frame):
     def __init__(self, master):
         super().__init__(master)
         self.master = master
-        view_frame = tk.LabelFrame(
+        label_frame = tk.LabelFrame(
             self, text='Source files and directories:'
         )
-        view_frame.grid(row=0, column=0, sticky='nwes')
-        self.tree = ttk.Treeview(view_frame)
+        label_frame.grid(row=0, column=0, sticky='nwes')
+        self.tree = ttk.Treeview(label_frame)
         self.tree.grid(row=0, column=0, sticky='nwse')
         self.tree['show'] = 'tree'
-        source_bar = ttk.Scrollbar(
-            view_frame, orient='vertical', command=self.tree.yview
+        scrollbar = ttk.Scrollbar(
+            label_frame, orient='vertical', command=self.tree.yview
         )
-        source_bar.grid(row=0, column=1, sticky='nse')
+        scrollbar.grid(row=0, column=1, sticky='nse')
         buttons_frame = tk.Frame(self)
         buttons_frame.grid(row=0, column=1, pady=7, sticky='nwse')
         make_button(
@@ -45,8 +84,8 @@ class SourceFrame(tk.Frame):
         )
         tk.Grid.columnconfigure(self, 0, weight=1)
         tk.Grid.rowconfigure(self, 0, weight=1)
-        tk.Grid.columnconfigure(view_frame, 0, weight=1)
-        tk.Grid.rowconfigure(view_frame, 0, weight=1)
+        tk.Grid.columnconfigure(label_frame, 0, weight=1)
+        tk.Grid.rowconfigure(label_frame, 0, weight=1)
 
     def add_file(self):
         paths = askopenfilenames()
@@ -92,10 +131,10 @@ class IgnoredFrame(tk.Frame):
         self.tree['show'] = 'tree'
         self.tree.grid(row=0, column=0, sticky='nwse')
         self.tree.config(height=5)
-        source_bar = ttk.Scrollbar(
+        scrollbar = ttk.Scrollbar(
             label_frame, orient='vertical', command=self.tree.yview
         )
-        source_bar.grid(row=0, column=1, sticky='nse')
+        scrollbar.grid(row=0, column=1, sticky='nse')
         buttons_frame = tk.Frame(self)
         buttons_frame.grid(row=0, column=1, pady=7, sticky='nwes')
         make_button(
@@ -106,7 +145,7 @@ class IgnoredFrame(tk.Frame):
         )
         make_button(
             buttons_frame, 'Remove Selected', 2, 1,
-            command=lambda: self.remove_item(self.tree, 'IGNORE')
+            command=lambda: self.remove_item()
         )
         tk.Grid.columnconfigure(self, 0, weight=1)
         tk.Grid.columnconfigure(self, 0, weight=1)
@@ -128,14 +167,14 @@ class IgnoredFrame(tk.Frame):
             path = self.master.backuper.add_ignored(path)
             self.tree.insert('', 'end', text=str(path) + '\\')
 
-    def remove_item(self, tree: ttk.Treeview, pathtype: str):
-        for item in tree.selection():
+    def remove_item(self):
+        for item in self.tree.selection():
             path = str(
-                pathlib.Path(tree.item(item)['text'].strip('*')).resolve()
+                pathlib.Path(self.tree.item(item)['text'].strip('*')).resolve()
             )
-            done = self.master.backuper.config.remove_option(pathtype, path)
+            done = self.master.backuper.config.remove_option('IGNORE', path)
             if done:
-                tree.delete(item)
+                self.tree.delete(item)
 
 
 class App(tk.Tk):
