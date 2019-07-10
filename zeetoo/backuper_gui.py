@@ -9,7 +9,133 @@ from tkinter.filedialog import (askopenfilename, askopenfilenames,
 from backuper import Backuper
 
 
-ZTHOME = pathlib.Path.home() / 'AppData' / 'zeetoo' / 'backuper'
+# To be introduced
+# ZTHOME = pathlib.Path.home() / 'AppData' / 'zeetoo' / 'backuper'
+# ZTHOME.mkdir(parents=True, exist_ok=True)
+
+
+class SourceFrame(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master)
+        self.master = master
+        view_frame = tk.LabelFrame(
+            self, text='Source files and directories:'
+        )
+        view_frame.grid(row=0, column=0, sticky='nwes')
+        self.tree = ttk.Treeview(view_frame)
+        self.tree.grid(row=0, column=0, sticky='nwse')
+        self.tree['show'] = 'tree'
+        source_bar = ttk.Scrollbar(
+            view_frame, orient='vertical', command=self.tree.yview
+        )
+        source_bar.grid(row=0, column=1, sticky='nse')
+        buttons_frame = tk.Frame(self)
+        buttons_frame.grid(row=0, column=1, pady=7, sticky='nwse')
+        make_button(
+            buttons_frame, 'Add Files', 0, 1, command=self.add_file
+        )
+        make_button(
+            buttons_frame, 'Add Folder', 1, 1, command=self.add_dir
+        )
+        make_button(
+            buttons_frame, 'Add Folder Tree', 2, 1, command=self.add_tree
+        )
+        make_button(
+            buttons_frame, 'Remove Selected', 3, 1, command=self.remove_item
+        )
+        tk.Grid.columnconfigure(self, 0, weight=1)
+        tk.Grid.rowconfigure(self, 0, weight=1)
+        tk.Grid.columnconfigure(view_frame, 0, weight=1)
+        tk.Grid.rowconfigure(view_frame, 0, weight=1)
+
+    def add_file(self):
+        paths = askopenfilenames()
+        for path in paths:
+            if str(pathlib.Path(path).resolve()) \
+                    not in self.master.backuper.config['SOURCE']:
+                path = self.master.backuper.add_source(path, 'f')
+                self.tree.insert('', 'end', text=str(path))
+
+    def add_dir(self):
+        path = askdirectory()
+        if path and str(pathlib.Path(path).resolve()) \
+                not in self.master.backuper.config['SOURCE']:
+            path = self.master.backuper.add_source(path, 'd')
+            self.tree.insert('', 'end', text=str(path) + '\\')
+
+    def add_tree(self):
+        path = askdirectory()
+        if path and str(pathlib.Path(path).resolve()) \
+                not in self.master.backuper.config['SOURCE']:
+            path = self.master.backuper.add_source(path, 'r')
+            self.tree.insert('', 'end', text=str(path) + '\\*')
+
+    def remove_item(self):
+        for item in self.tree.selection():
+            path = str(
+                pathlib.Path(self.tree.item(item)['text'].strip('*')).resolve()
+            )
+            done = self.master.backuper.config.remove_option('SOURCE', path)
+            if done:
+                self.tree.delete(item)
+
+
+class IgnoredFrame(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master)
+        self.master = master
+        label_frame = tk.LabelFrame(
+            self, text='Ignored files and directories:'
+        )
+        label_frame.grid(row=0, column=0, sticky='nwes')
+        self.tree = ttk.Treeview(label_frame)
+        self.tree['show'] = 'tree'
+        self.tree.grid(row=0, column=0, sticky='nwse')
+        self.tree.config(height=5)
+        source_bar = ttk.Scrollbar(
+            label_frame, orient='vertical', command=self.tree.yview
+        )
+        source_bar.grid(row=0, column=1, sticky='nse')
+        buttons_frame = tk.Frame(self)
+        buttons_frame.grid(row=0, column=1, pady=7, sticky='nwes')
+        make_button(
+            buttons_frame, 'Add Files', 0, 1, command=self.add_ignored_file
+        )
+        make_button(
+            buttons_frame, 'Add Folder', 1, 1, command=self.add_ignored_dir
+        )
+        make_button(
+            buttons_frame, 'Remove Selected', 2, 1,
+            command=lambda: self.remove_item(self.tree, 'IGNORE')
+        )
+        tk.Grid.columnconfigure(self, 0, weight=1)
+        tk.Grid.columnconfigure(self, 0, weight=1)
+        tk.Grid.columnconfigure(label_frame, 0, weight=1)
+        tk.Grid.columnconfigure(label_frame, 0, weight=1)
+
+    def add_ignored_file(self):
+        paths = askopenfilenames()
+        for path in paths:
+            if str(pathlib.Path(path).resolve()) \
+                    not in self.master.backuper.ignored:
+                path = self.master.backuper.add_ignored(path)
+                self.tree.insert('', 'end', text=str(path))
+
+    def add_ignored_dir(self):
+        path = askdirectory()
+        if path and str(pathlib.Path(path).resolve()) \
+                not in self.master.backuper.ignored:
+            path = self.master.backuper.add_ignored(path)
+            self.tree.insert('', 'end', text=str(path) + '\\')
+
+    def remove_item(self, tree: ttk.Treeview, pathtype: str):
+        for item in tree.selection():
+            path = str(
+                pathlib.Path(tree.item(item)['text'].strip('*')).resolve()
+            )
+            done = self.master.backuper.config.remove_option(pathtype, path)
+            if done:
+                tree.delete(item)
 
 
 class App(tk.Tk):
@@ -32,67 +158,11 @@ class App(tk.Tk):
         tk.Grid.columnconfigure(dest_frame, 1, weight=1)
         tk.Grid.rowconfigure(dest_frame, 0, weight=1)
 
-        source_frame = tk.Frame(self)
-        source_frame.grid(row=1, column=0, sticky='nwes')
-        source_label = tk.LabelFrame(
-            source_frame, text='Source files and directories:'
-        )
-        source_label.grid(row=0, column=0, sticky='nwes')
-        self.source = ttk.Treeview(source_label)
-        self.source.grid(row=0, column=0, sticky='nwse')
-        self.source['show'] = 'tree'
-        source_bar = ttk.Scrollbar(
-            source_label, orient='vertical', command=self.source.yview
-        )
-        source_bar.grid(row=0, column=1, sticky='nse')
-        buttons_frame = tk.Frame(source_frame)
-        buttons_frame.grid(row=0, column=1, pady=7, sticky='nwse')
-        add_file_butt = make_button(
-            buttons_frame, 'Add Files', 0, 1, command=self.add_file
-        )
-        add_dir_butt = make_button(
-            buttons_frame, 'Add Folder', 1, 1, command=self.add_dir
-        )
-        add_tree_burr = make_button(
-            buttons_frame, 'Add Folder Tree', 2, 1, command=self.add_tree
-        )
-        remove_butt = make_button(
-            buttons_frame, 'Remove Selected', 3, 1,
-            command=lambda: self.remove_item(self.source, 'SOURCE')
-        )
-        tk.Grid.columnconfigure(source_frame, 0, weight=1)
-        tk.Grid.rowconfigure(source_frame, 0, weight=1)
-        tk.Grid.columnconfigure(source_label, 0, weight=1)
-        tk.Grid.rowconfigure(source_label, 0, weight=1)
+        self.source = SourceFrame(self)
+        self.source.grid(row=1, column=0, sticky='nwes')
 
-        ignored_frame = tk.Frame(self)
-        ignored_frame.grid(row=2, column=0, sticky='nwe')
-        ignored_label = tk.LabelFrame(
-            ignored_frame, text='Ignored files and directories:'
-        )
-        ignored_label.grid(row=0, column=0, sticky='nwes')
-        self.ignored = ttk.Treeview(ignored_label)
-        self.ignored['show'] = 'tree'
-        self.ignored.grid(row=0, column=0, sticky='nwse')
-        self.ignored.config(height=5)
-        source_bar = ttk.Scrollbar(
-            ignored_label, orient='vertical', command=self.ignored.yview
-        )
-        source_bar.grid(row=0, column=1, sticky='nse')
-        buttons_frame = tk.Frame(ignored_frame)
-        buttons_frame.grid(row=0, column=1, pady=7, sticky='nwes')
-        ignore_file_butt = make_button(
-            buttons_frame, 'Add Files', 0, 1, command=self.add_ignored_file
-        )
-        ignore_dir_butt = make_button(
-            buttons_frame, 'Add Folder', 1, 1, command=self.add_ignored_dir
-        )
-        remignore_butt = make_button(
-            buttons_frame, 'Remove Selected', 2, 1,
-            command=lambda: self.remove_item(self.ignored, 'IGNORE')
-        )
-        tk.Grid.columnconfigure(ignored_frame, 0, weight=1)
-        tk.Grid.columnconfigure(ignored_label, 0, weight=1)
+        self.ignored = IgnoredFrame(self)
+        self.ignored.grid(row=2, column=0, sticky='nwe')
 
         time_frame = tk.Frame(self)
         time_frame.grid(row=3, column=0, sticky='nwes')
@@ -162,52 +232,6 @@ class App(tk.Tk):
         path = self.dest_var.get()
         self.backuper.destination = path
 
-    def add_file(self):
-        paths = askopenfilenames()
-        for path in paths:
-            if str(pathlib.Path(path).resolve()) \
-                    not in self.backuper.config['SOURCE']:
-                path = self.backuper.add_source(path, 'f')
-                self.source.insert('', 'end', text=str(path))
-
-    def add_dir(self):
-        path = askdirectory()
-        if path and str(pathlib.Path(path).resolve()) \
-                not in self.backuper.config['SOURCE']:
-            path = self.backuper.add_source(path, 'd')
-            self.source.insert('', 'end', text=str(path) + '\\')
-
-    def add_tree(self):
-        path = askdirectory()
-        if path and str(pathlib.Path(path).resolve()) \
-                not in self.backuper.config['SOURCE']:
-            path = self.backuper.add_source(path, 'r')
-            self.source.insert('', 'end', text=str(path) + '\\*')
-
-    def add_ignored_file(self):
-        paths = askopenfilenames()
-        for path in paths:
-            if str(pathlib.Path(path).resolve()) \
-                    not in self.backuper.ignored:
-                path = self.backuper.add_ignored(path)
-                self.ignored.insert('', 'end', text=str(path))
-
-    def add_ignored_dir(self):
-        path = askdirectory()
-        if path and str(pathlib.Path(path).resolve()) \
-                not in self.backuper.ignored:
-            path = self.backuper.add_ignored(path)
-            self.ignored.insert('', 'end', text=str(path) + '\\')
-
-    def remove_item(self, tree: ttk.Treeview, pathtype: str):
-        for item in tree.selection():
-            path = str(
-                pathlib.Path(tree.item(item)['text'].strip('*')).resolve()
-            )
-            done = self.backuper.config.remove_option(pathtype, path)
-            if done:
-                tree.delete(item)
-
     def changed_time(self):
         self.backuper.set_time(
             self.period_var.get(),
@@ -252,14 +276,14 @@ class App(tk.Tk):
 
     def fill_gui(self):
         self.dest_var.set(self.backuper.destination)
-        self.source.delete(*self.source.get_children())
-        self.ignored.delete(*self.ignored.get_children())
+        self.source.tree.delete(*self.source.tree.get_children())
+        self.ignored.tree.delete(*self.ignored.tree.get_children())
         for path, mode in self.backuper.config['SOURCE'].items():
             appendix = '\\' if mode == 'd' else '\\*' if mode == 'r' else ''
-            self.source.insert('', 'end', text=path + appendix)
+            self.source.tree.insert('', 'end', text=path + appendix)
         for path in self.backuper.ignored:
             appendix = '\\' if pathlib.Path(path).is_dir() else ''
-            self.ignored.insert('', 'end', text=path + appendix)
+            self.ignored.tree.insert('', 'end', text=path + appendix)
         self.period_var.set(self.backuper.config['BACKUP']['schedule'])
         hour, minute = self.backuper.config['BACKUP']['starttime'].split(':')
         self.hour_var.set(hour)
