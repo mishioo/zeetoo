@@ -9,6 +9,9 @@ from tkinter.filedialog import (askopenfilename, askopenfilenames,
 from backuper import Backuper
 
 
+ZTHOME = pathlib.Path.home() / 'AppData' / 'zeetoo' / 'backuper'
+
+
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
