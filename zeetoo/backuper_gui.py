@@ -145,7 +145,7 @@ class IgnoredFrame(tk.Frame):
         )
         make_button(
             buttons_frame, 'Remove Selected', 2, 1,
-            command=lambda: self.remove_item()
+            command=self.remove_item
         )
         tk.Grid.columnconfigure(self, 0, weight=1)
         tk.Grid.columnconfigure(self, 0, weight=1)
