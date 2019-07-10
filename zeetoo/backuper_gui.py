@@ -106,7 +106,7 @@ class IgnoredFrame(tk.Frame):
         )
         make_button(
             buttons_frame, 'Remove Selected', 2, 1,
-            command=lambda: self.remove_item(self.tree, 'IGNORE')
+            command=self.remove_item
         )
         tk.Grid.columnconfigure(self, 0, weight=1)
         tk.Grid.columnconfigure(self, 0, weight=1)
@@ -128,14 +128,14 @@ class IgnoredFrame(tk.Frame):
             path = self.master.backuper.add_ignored(path)
             self.tree.insert('', 'end', text=str(path) + '\\')
 
-    def remove_item(self, tree: ttk.Treeview, pathtype: str):
-        for item in tree.selection():
+    def remove_item(self):
+        for item in self.tree.selection():
             path = str(
-                pathlib.Path(tree.item(item)['text'].strip('*')).resolve()
+                pathlib.Path(self.tree.item(item)['text'].strip('*')).resolve()
             )
-            done = self.master.backuper.config.remove_option(pathtype, path)
+            done = self.master.backuper.config.remove_option('IGNORE', path)
             if done:
-                tree.delete(item)
+                self.tree.delete(item)
 
 
 class App(tk.Tk):
