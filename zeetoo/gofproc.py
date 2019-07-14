@@ -84,7 +84,8 @@ def get_data(path):
 
 
 def select_data(line, args):
-    entries = []
+    entries = [bool(line)]
+    # first element indicates if calculation converged
     if not line:
         return entries
     zcr, tcr, ecr, gcr, zpe, ten, ent, gib, imag = line
@@ -132,9 +133,12 @@ def main(argv=None):
             args.append_entry = int(args.append_entry)
         except ValueError:
             args.append_entry = column_index_from_string(args.append_entry)
-    for file, entries in data:
-        if not entries:  # no data extracted
+    for file, (converged, *entries) in data:
+        if not converged:  # no data extracted
             unconverged.append(file)
+            continue
+        if not entries:
+            # only unconverged requested
             continue
         length = len(file) if len(file) > length else length
         lgg.info(
