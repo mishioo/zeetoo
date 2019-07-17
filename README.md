@@ -11,6 +11,7 @@ A collection of various Python scripts created as a help in everyday work in Tea
 - [getcdx](#getcdx) - extract all ChemDraw files embedded in .docx file
 - [gofproc](#gofproc) - simple script for processing Gaussian output files
 - [sdf_to_gjf](#sdf_to_gjf) - save molecules from .sdf file as separate .gjf files
+- [Requirements](#requirements)
 - [License](#license)
 
 ## Command Line Interface
@@ -19,7 +20,7 @@ All zeetoo functionality is available as command line tool. Each module can be a
 
 ## backuper
 
-Simple Python script for scheduling and running automated files backup on Windows machines. Minimal graphical user interface included.
+A simple Python script for scheduling and running automated files backup on Windows machines. Minimal graphical user interface included.
 
 ### Getting Started
 
@@ -48,34 +49,42 @@ To start up graphical user interface (GUI) dubble-click on start_gui.bat file. A
 14. Remove backup task scheduled earlier.
 15. Run backup task now, according to specified guidelines. Saving configuration to file not needed.
 16. Load specified configuration file.
-17. Save configuration file to specfied location.
+17. Save configuration file to specified location.
 
 After scheduling backup task configuration file should not be moved. It can be modified though, backup task will be done with this modified guidelines from now on. Scheduling new backup task, even using different configuration file, will override previous task, unless task_name in this file is specifically changed.
 
 About conflicts solving mechanism: if file with the same name is already present in backup destination directory, action to conduct will be chosen depending on time of last modification of both, source and destination files.
-- If source file is newer than backup version, the second will be overrieden.
+- If source file is newer than backup version, the second will be overridden.
 - If both files have the same last modification time, file will not be copied.
 - If backup version is newer, it will be renamed to oldname_last-modification-time.ext and source file will be copied, preserving both versions.
 
 ## confsearch
 
-Performs a conformational search on set of given molecules. Requires RDkit software.
+Performs a conformational search on set of given molecules.
 
 ## fixgvmol
 
-Adds mol version and END line to .mol files missing these pieces of information.
+.mol files created with GaussView (GV5 at least) lack some information, namely a mol version and END line. Without it some programs might not be able to read such files. This script adds these pieces of information to .mol files missing them.
 
 ## getcdx
 
-Extracts all embedded ChemDraw files from a .docx document. Requires olefile package.
+Extracts all embedded ChemDraw files from a .docx document and saves it in a separate directory (which might be specified by user), using in-text description of schemes/drawings as file names. It may be specified if description of the scheme/drawing is located above or underneath it (the former is default). Finally, It may be specified how long filename should be.
 
 ## gofproc
 
-Extracts information about molecule energy from given set of Gaussian output files.
+Extracts information about molecule energy and imaginary frequencies from given set of Gaussian output files with *freq* job performed. Extracted data might be written to stdout or to specified .xlsx file at the end of the file or appended to a row, based on name of the file parsed. Calculations, that did not converged are reported separately.
 
 ## sdf_to_gjf
 
-Writes molecules contained in an .sdf file to a set of .gjf files.
+Writes molecules contained in an .sdf file to a set of .gjf files in accordance with the guidelines given by user.
+
+# Requirements
+
+- getcdx module requires olefile package
+- gofproc module requires openpyxl package
+- confsearch module requires RDKit software
+
+Please note, that the RDKit **will not** be installed automatically with this package. The recommended way to get RDKit software is through use of Anaconda Python distribution. Please refer to RDKit documentation for more information.
 
 # License
 
