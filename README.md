@@ -2,20 +2,24 @@
 
 A collection of various Python scripts created as a help in everyday work in Team II IChO PAS.
 
-- [backuper.py](#backuperpy)
+- [Command Line Interface](#command-line-interface)
+- [backuper](#backuper) - simple automated backup tool for Windows
     - [Geting Started](#getting-started)
     - [Graphical User Interface](#graphical-user-interface)
-    - [Command Line Tool](#command-line-tool)
-    - [Python API](#python-api)
-- [confsearch.py](#confsearchpy)
-- [fixgvmol.py](#fixgvmolpy)
-- [gofproc.py](#gofprocpy)
-- [sdf_to_gjf.py](#sdf_to_gjfpy)
+- [confsearch](#confsearch) - find conformers of given molecule using RDKit
+- [fixgvmol](#fixgvmol) - correct .mol files created with GaussView software
+- [getcdx](#getcdx) - extract all ChemDraw files embedded in .docx file
+- [gofproc](#gofproc) - simple script for processing Gaussian output files
+- [sdf_to_gjf](#sdf_to_gjf) - save molecules from .sdf file as separate .gjf files
 - [License](#license)
 
-## backuper.py
+## Command Line Interface
 
-Simple Ptyhon script for scheduling and running automated files backup on Windows machines. Minimal graphical user interface included.
+All zeetoo functionality is available as command line tool. Each module can be accessed with use of `python [module_name] [parameters]`. For more information run `python zeetoo --help` or `python zeetoo [module_name] --help`.
+
+## backuper
+
+Simple Python script for scheduling and running automated files backup on Windows machines. Minimal graphical user interface included.
 
 ### Getting Started
 
@@ -53,27 +57,23 @@ About conflicts solving mechanism: if file with the same name is already present
 - If both files have the same last modification time, file will not be copied.
 - If backup version is newer, it will be renamed to oldname_last-modification-time.ext and source file will be copied, preserving both versions.
 
-### Command Line Tool
-
-Zeetoo backup functionality is available as command line tool. For more information run 'python backuper.py --help'.
-
-### Python API
-
-This section will be supplemented soon.
-
-## confsearch.py
+## confsearch
 
 Performs a conformational search on set of given molecules. Requires RDkit software.
 
-## fixgvmol.py
+## fixgvmol
 
 Adds mol version and END line to .mol files missing these pieces of information.
 
-## gofproc.py
+## getcdx
+
+Extracts all embedded ChemDraw files from a .docx document. Requires olefile package.
+
+## gofproc
 
 Extracts information about molecule energy from given set of Gaussian output files.
 
-## sdf_to_gjf.py
+## sdf_to_gjf
 
 Writes molecules contained in an .sdf file to a set of .gjf files.
 
