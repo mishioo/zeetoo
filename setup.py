@@ -14,7 +14,10 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/mishioo/zeetoo",
-    packages=setuptools.find_packages(),
+    packages=['zeetoo'],
+    entry_points={
+        'console_scripts': ['zeetoo=zeetoo.__main__:main'],
+    },
     install_requires=["openpyxl", "olefile"],
     classifiers=[
         "Programming Language :: Python :: 3",
