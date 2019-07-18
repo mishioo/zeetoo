@@ -1,7 +1,6 @@
 import argparse
 import importlib
 import pathlib
-import sys
 
 
 def get_parser(available_modules):
@@ -25,9 +24,8 @@ def main():
     modules = [
         f.stem for f in directory.glob('*.py') if not f.stem.startswith('_')
     ]
-    validator = get_parser(modules)
-    _, module, *other = sys.argv
-    args = validator.parse_args([module])
+    parser = get_parser(modules)
+    args, other = parser.parse_known_args()
     module = args.module
     module = importlib.import_module(module)
     module.main(other)
