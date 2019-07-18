@@ -4,14 +4,9 @@ import threading
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter.filedialog import (askopenfilename, askopenfilenames,
-                                askdirectory, asksaveasfilename)
+                                askdirectory)
 
 from backuper import Backuper
-
-
-# To be introduced
-# ZTHOME = pathlib.Path.home() / 'AppData' / 'zeetoo' / 'backuper'
-# ZTHOME.mkdir(parents=True, exist_ok=True)
 
 
 class SourceFrame(tk.Frame):
@@ -211,14 +206,18 @@ class App(tk.Tk):
         load_button = make_button(
             bottom_frame, 'Load Config', 0, 4, command=self.load
         )
-        save_button = make_button(
+        self.save_button = make_button(
             bottom_frame, 'Save Config', 0, 5, command=self.save
         )
         tk.Grid.columnconfigure(bottom_frame, 3, weight=1)
         tk.Grid.rowconfigure(bottom_frame, 0, weight=1)
 
+        self.HOME_DIR = pathlib.Path.home().joinpath(
+            'AppData', 'Local', 'zeetoo', 'backuper'
+        )
+        self.HOME_DIR.mkdir(parents=True, exist_ok=True)
         self.backuper = Backuper(
-            pathlib.Path(__file__).resolve().with_name('config.ini')
+            self.HOME_DIR / 'config.ini'
         )
         self.fill_gui()
 
@@ -240,22 +239,27 @@ class App(tk.Tk):
         )
 
     def save(self):
-        path = asksaveasfilename(
-            defaultextension='ini', initialfile='config.ini',
-            initialdir=str(pathlib.Path(__file__).resolve().parent),
-            filetypes=[('Config files', '*.ini'), ('All files', '*.*')]
+        self.backuper.save_config()
+        self.save_button.configure(text='Saved!')
+        thread = threading.Timer(
+            2, self.save_button.configure, kwargs={'text': 'Save Config'}
         )
-        if path:
-            self.backuper.save_config()
+        thread.start()
 
     def load(self):
-        file = askopenfilename()
+        file = askopenfilename(
+            defaultextension='ini', initialfile='config.ini',
+            filetypes=[('Config files', '*.ini'), ('All files', '*.*')]
+        )
         if file:
             self.backuper.load_config(file)
             self.fill_gui()
 
     def schedule(self):
         self.backuper.schedule()
+
+    def unschedule(self):
+        self.backuper.unschedule()
 
     def _run(self):
         self.run_text_var.set('Running...')
@@ -266,9 +270,6 @@ class App(tk.Tk):
             self.run_button.config(state='normal')
         except Exception:
             logging.debug('Could not change button state')
-
-    def unschedule(self):
-        self.backuper.unschedule()
 
     def run_now(self):
         thread = threading.Thread(target=self._run, args=[self.backuper])
