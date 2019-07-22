@@ -1,4 +1,11 @@
 import setuptools
+from setuptools.command.install import install
+
+
+class Shortcut(install):
+    def run(self):
+        pass
+
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -16,7 +23,7 @@ setuptools.setup(
     url="https://github.com/mishioo/zeetoo",
     packages=['zeetoo'],
     entry_points={
-        'console_scripts': ['zeetoo=zeetoo.__main__:main'],
+        'console_scripts': ['zeetoo=zeetoo.__main__:main']
     },
     install_requires=["openpyxl", "olefile"],
     classifiers=[
