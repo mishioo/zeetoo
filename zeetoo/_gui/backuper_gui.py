@@ -6,7 +6,7 @@ import tkinter.ttk as ttk
 from tkinter.filedialog import (askopenfilename, askopenfilenames,
                                 askdirectory)
 
-from backuper import Backuper
+from zeetoo.backuper import Backuper
 
 
 class SourceFrame(tk.Frame):
@@ -133,10 +133,9 @@ class IgnoredFrame(tk.Frame):
                 self.tree.delete(item)
 
 
-class App(tk.Tk):
-    def __init__(self):
-        super().__init__()
-        self.title('zeetoo backuper')
+class AppFrame(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master)
         tk.Grid.columnconfigure(self, 0, weight=1)
         tk.Grid.rowconfigure(self, 1, weight=1)
         dest_frame = tk.Frame(self)
@@ -305,7 +304,10 @@ def main(argv=None):
     logging.basicConfig(
         format='%(levelname)s: %(message)s', level=logging.INFO
     )
-    root = App()
+    root = tk.Tk()
+    root.title('zeetoo backuper')
+    app = AppFrame(root)
+    app.pack(fill='both', expand=True)
     root.mainloop()
 
 
