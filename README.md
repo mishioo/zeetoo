@@ -7,7 +7,7 @@ A collection of various Python scripts created as a help in everyday work in Tea
     - [Command Line Interface](#command-line-interface)
     - [Python API](#python-api)
     - [Graphical User Interface](#graphical-user-interface)
-- [Description of scripts](#description-of-scripts)
+- [Description of modules](#description-of-modules)
     - [backuper](#backuper) - simple automated backup tool for Windows
     - [confsearch](#confsearch) - find conformers of given molecule using RDKit
     - [fixgvmol](#fixgvmol) - correct .mol files created with GaussView software
@@ -15,7 +15,7 @@ A collection of various Python scripts created as a help in everyday work in Tea
     - [gofproc](#gofproc) - simple script for processing Gaussian output files
     - [sdf_to_gjf](#sdf_to_gjf) - save molecules from .sdf file as separate .gjf files
 - [Requirements](#requirements)
-- [License & Disclaimer](#license-&-disclaimer)
+- [License & Disclaimer](#license--disclaimer)
 
 ## Getting Started
 
@@ -24,9 +24,11 @@ You can download an installer of latest version from [python.org](https://www.py
 (a shortcut to direct download for Windows:
 [Python 3.7.4 Windows x86 executable installer](https://www.python.org/ftp/python/3.7.4/python-3.7.4.exe)).
 
-Next, download this package as zip file using 'Clone or download' button on this site.
+The easiest way to get **zeetoo** up and running is to run `pip install zeetoo` in the command line&ast;.
+Alternatively, you can download this package as zip file using 'Clone or download' button on this site.
 Unzip the package and from the resulting directory run `python setup.py install`
-in the terminal/command line&ast;.
+in the command line&ast;.
+
 And that's it, you're ready to go!
 
 &ast; On windows you can reach command line by right-clicking inside the directory
@@ -39,12 +41,13 @@ while holding Shift and then choosing "Open PowerShell window here" or "Open com
 All zeetoo functionality is available from command line.
 After installation of the package each module can be accessed with use of
 `zeetoo [module_name] [parameters]`.
-For more information run `zeetoo --help` to see modules available or
-`zeetoo [module_name] --help` to see help page for specific module.
+For more information run `zeetoo --help` to see available modules or
+`zeetoo [module_name] --help` to see the help page for specific module.
 
 ### Python API
 
-This section will be supplemented soon.
+Modules contained in **zeetoo** may also be used directly from python.
+This section will be supplemented with details on this topic soon.
 
 ### Graphical User Interface
 
@@ -61,7 +64,7 @@ Essentially, it copies specified files and directories to specified location
 with regard to date of last modification of both, source file and existing copy:
 - if source file is newer than backup version, the second will be overridden;
 - if both files have the same last modification time, file will not be copied;
-- if backup version is newer, it will be renamed to oldname_last-modification-time
+- if backup version is newer, it will be renamed to "oldname_last-modification-time"
  and source file will be copied, preserving both versions.
 
 After creating a specification for backup job (that is, specifying backup destination
@@ -74,8 +77,8 @@ A minimal graphical user interface for this script is available (see below).
 
 ### graphical user interface for backuper module
 
-To start up the graphical user interface (GUI) dubble-click on start_gui.bat
-file or run `zeetoo backuper_gui`.
+To start up the graphical user interface (GUI) run `zeetoo backuper_gui` in the command line.
+If you've downloaded the whole package manually, you may also double-click on start_gui.bat file.
 A window similar to the one below should appear.
 Further you'll find description of each element of this window.
 
@@ -129,8 +132,9 @@ It may be specified if description of the scheme/drawing is located above or und
 ## gofproc
 
 Extracts information about molecule energy and imaginary frequencies from given set of Gaussian
-output files with *freq* job performed. Extracted data might be written to stdout or to specified
-.xlsx file at the end of the file or appended to a row, based on name of the file parsed.
+output files with *freq* job performed. Extracted data might be written to terminal (stdout)
+or to specified .xlsx file (must not be opened in other programs) at the end of the file or
+appended to a row, based on name of the file parsed.
 Calculations, that did not converged are reported separately.
 
 ## sdf_to_gjf
