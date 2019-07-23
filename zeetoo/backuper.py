@@ -260,7 +260,7 @@ def get_parser():
     )
     parser.add_argument(
         '--destination', '-d', metavar='path',
-        help="path to Backupers' config.ini file"
+        help="path to directory, in which copied files will be stored"
     )
     parser.add_argument(
         '--add-sources', '-a', metavar='path', nargs='*', dest='add',
@@ -280,7 +280,7 @@ def get_parser():
     )
     parser.add_argument(
         '--period', '-p', choices=['once', 'daily', 'weekly', 'monthly'],
-        help='how often should backup be run'
+        help='how often should backup be carried out'
     )
     parser.add_argument(
         '--hour', '-H', type=int, choices=range(24), metavar='H',
