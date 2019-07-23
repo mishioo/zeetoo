@@ -15,26 +15,32 @@ A collection of various Python scripts created as a help in everyday work in Tea
     - [gofproc](#gofproc) - simple script for processing Gaussian output files
     - [sdf_to_gjf](#sdf_to_gjf) - save molecules from .sdf file as separate .gjf files
 - [Requirements](#requirements)
-- [License](#license)
+- [License & Disclaimer](#license-&-disclaimer)
 
 ## Getting Started
 
 To use this collection of scripts you will need a Python 3 interpreter.
-You can download an installer of latest version from [python.org](https://www.python.org) (a shortcut to direct download for Windows: [Python 3.7.4 Windows x86 executable installer](https://www.python.org/ftp/python/3.7.4/python-3.7.4.exe)).
+You can download an installer of latest version from [python.org](https://www.python.org)
+(a shortcut to direct download for Windows:
+[Python 3.7.4 Windows x86 executable installer](https://www.python.org/ftp/python/3.7.4/python-3.7.4.exe)).
 
 Next, download this package as zip file using 'Clone or download' button on this site.
-Unzip the package and from the resulting directory run `python setup.py install` in the terminal/command line&ast;.
+Unzip the package and from the resulting directory run `python setup.py install`
+in the terminal/command line&ast;.
 And that's it, you're ready to go!
 
-&ast; On windows you can reach command line by right-clicking inside the directory while holding Shift and then choosing "Open PowerShell window here" or "Open command window here".
+&ast; On windows you can reach command line by right-clicking inside the directory
+while holding Shift and then choosing "Open PowerShell window here" or "Open command window here".
 
 ## Running Scripts
 
 ### Command Line Interface
 
 All zeetoo functionality is available from command line.
-After installation of the package each module can be accessed with use of `zeetoo [module_name] [parameters]`.
-For more information run `zeetoo --help` to see modules available or `zeetoo [module_name] --help` to see help page for specific module.
+After installation of the package each module can be accessed with use of
+`zeetoo [module_name] [parameters]`.
+For more information run `zeetoo --help` to see modules available or
+`zeetoo [module_name] --help` to see help page for specific module.
 
 ### Python API
 
@@ -50,12 +56,28 @@ GUIs for other modules will probably be available in near future.
 
 ## backuper
 
-A simple Python script for scheduling and running automated files backup on Windows machines. Minimal graphical user interface included.
+A simple Python script for scheduling and running automated backup.
+Essentially, it copies specified files and directories to specified location
+with regard to date of last modification of both, source file and existing copy:
+- if source file is newer than backup version, the second will be overridden;
+- if both files have the same last modification time, file will not be copied;
+- if backup version is newer, it will be renamed to oldname_last-modification-time
+ and source file will be copied, preserving both versions.
+
+After creating a specification for backup job (that is, specifying backup destination
+and files that should be copied; these information are stored in .ini file),
+it may be run manually or scheduled.
+Scheduling is currently available only on Windows, as it uses build-in Windows task scheduler.
+It is important to remember, that this is not a version control software.
+Only lastly copied version is stored. 
+A minimal graphical user interface for this script is available (see below).
 
 ### graphical user interface for backuper module
 
-To start up the graphical user interface (GUI) dubble-click on start_gui.bat file or run `zeetoo backuper_gui`.
-A window similar to the one below should appear. Further you'll find description of each element of this window.
+To start up the graphical user interface (GUI) dubble-click on start_gui.bat
+file or run `zeetoo backuper_gui`.
+A window similar to the one below should appear.
+Further you'll find description of each element of this window.
 
 ![screenshot](https://raw.githubusercontent.com/Mishioo/zeetoo/assets/screenshot.png)
 
@@ -80,33 +102,41 @@ A window similar to the one below should appear. Further you'll find description
 Configuration is stored in `[User]/AppData/Local/zeetoo/backuper/config.ini` file.
 After scheduling backup task this file should not be moved.
 It can be modified though, backup task will be done with this modified guidelines from now on.
-Scheduling new backup task, even using different configuration file, will override previous task, unless task_name in this file is specifically changed.
-
-Conflicts encountered during backup are solved using time of last modification of conflicting files.
-If file with the same name is already present in backup destination directory, action to conduct will be chosen as follows:
-- if source file is newer than backup version, the second will be overridden;
-- if both files have the same last modification time, file will not be copied;
-- if backup version is newer, it will be renamed to oldname_last-modification-time.ext and source file will be copied, preserving both versions.
+Scheduling new backup task, even using different configuration file, will override previous task,
+unless task_name in this file is specifically changed.
 
 ## confsearch
 
-Performs a conformational search on set of given molecules.
+Performs a conformational search on set of given molecules. Takes a .mol file (or number of them)
+as an input and saves a list of generated conformers to specified .sdf file.
+Some restriction on this process may be given: a number of conformers to generate,
+a minimum RMSD value, a maximum energy difference, a maximum number of optimization cycles,
+and a set of constraints for force field optimization.
 
 ## fixgvmol
 
-.mol files created with GaussView (GV5 at least) lack some information, namely a mol version and END line. Without it some programs might not be able to read such files. This script adds these pieces of information to .mol files missing them.
+.mol files created with GaussView (GV5 at least) lack some information, namely a mol version and END line.
+Without it some programs might not be able to read such files.
+This script adds these pieces of information to .mol files missing them.
 
 ## getcdx
 
-Extracts all embedded ChemDraw files from a .docx document and saves it in a separate directory (which might be specified by user), using in-text description of schemes/drawings as file names. It may be specified if description of the scheme/drawing is located above or underneath it (the former is default). Finally, It may be specified how long filename should be.
+Extracts all embedded ChemDraw files from a .docx document and saves it in a separate directory
+(which might be specified by user), using in-text description of schemes/drawings as file names.
+It may be specified if description of the scheme/drawing is located above or underneath it
+(the former is default). Finally, It may be specified how long filename should be.
 
 ## gofproc
 
-Extracts information about molecule energy and imaginary frequencies from given set of Gaussian output files with *freq* job performed. Extracted data might be written to stdout or to specified .xlsx file at the end of the file or appended to a row, based on name of the file parsed. Calculations, that did not converged are reported separately.
+Extracts information about molecule energy and imaginary frequencies from given set of Gaussian
+output files with *freq* job performed. Extracted data might be written to stdout or to specified
+.xlsx file at the end of the file or appended to a row, based on name of the file parsed.
+Calculations, that did not converged are reported separately.
 
 ## sdf_to_gjf
 
-Writes molecules contained in an .sdf file to a set of .gjf files in accordance with the guidelines given by user.
+Writes molecules contained in an .sdf file to a set of .gjf files in accordance with the guidelines
+given by user.
 
 # Requirements
 
@@ -114,8 +144,10 @@ Writes molecules contained in an .sdf file to a set of .gjf files in accordance 
 - gofproc module requires openpyxl package
 - confsearch module requires RDKit software
 
-Please note, that the RDKit **will not** be installed automatically with this package. The recommended way to get RDKit software is through use of Anaconda Python distribution. Please refer to RDKit documentation for more information.
+Please note, that the RDKit **will not** be installed automatically with this package.
+The recommended way to get RDKit software is through use of Anaconda Python distribution.
+Please refer to RDKit documentation for more information.
 
-# License
+# License & Disclaimer
 
 See the LICENSE.txt file for license rights and limitations (MIT).
