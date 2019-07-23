@@ -6,7 +6,7 @@ import tkinter.ttk as ttk
 from tkinter.filedialog import (askopenfilename, askopenfilenames,
                                 askdirectory)
 
-from backuper import Backuper
+from .backuper import Backuper
 
 
 class SourceFrame(tk.Frame):

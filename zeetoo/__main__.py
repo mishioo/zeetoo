@@ -26,10 +26,14 @@ def main():
         f.stem for f in directory.glob('*.py') if not f.stem.startswith('_')
     ]
     validator = get_parser(modules)
-    _, module, *other = sys.argv
+    try:
+        _, module, *other = sys.argv
+    except ValueError:
+        args = validator.parse_args([])
+        module, other = None, None
     args = validator.parse_args([module])
     module = args.module
-    module = importlib.import_module(module)
+    module = importlib.import_module('.' + module, 'zeetoo')
     module.main(other)
 
 

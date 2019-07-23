@@ -1,4 +1,6 @@
 .idea/
-backup/
+dist/
+bild/
 __pycache__/
 *.ini
+*.egg*
