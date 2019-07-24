@@ -1,2 +1,2 @@
 @echo off
-python .\zeetoo backuper_gui
+python -m zeetoo backuper_gui
