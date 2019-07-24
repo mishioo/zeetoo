@@ -12,7 +12,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="zeetoo",
-    version="0.1.1",
+    version="0.1.2",
     author="Michał M. Więcław",
     author_email="mwieclaw@icho.edu.pl",
     license='MIT',
