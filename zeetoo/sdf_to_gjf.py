@@ -2,7 +2,7 @@ import argparse
 import logging as lgg
 import re
 import pathlib
-from typing import Tuple, Generator, Optional, TextIO
+from typing import Tuple, Generator, Optional, TextIO, List
 
 coords = re.compile(r"\s*(-?\d+\.\d+)\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)\s*(\w\w?)")
 
@@ -37,7 +37,15 @@ def get_parser(argv=None):
             "Defaults to 'No additional information given.'."
         ),
     )
-    prsr.add_argument("-l", "--link", default="", help="List of link-0 commands.")
+    prsr.add_argument(
+        "-l",
+        "--link",
+        default="",
+        help=(
+            "List of link-0 commands. Each '%' character (percent sign) will be "
+            "interpreted as a beginning of new a command. Defaults to empty string."
+        )
+    )
     prsr.add_argument(
         "-s",
         "--suffix",
@@ -109,19 +117,19 @@ def save_molecule(
     charge: int,
     multipl: int,
     coords: Tuple[str, float, float, float],
-    command: str,
+    route: str,
     comment: str = "",
-    prefix: str = "",
+    linkzero: List[str] = (),
     suffix: str = "",
     precision: int = 7
 ) -> None:
     with dest.open("w") as gjf:
-        if prefix:
-            gjf.write(prefix)
-            gjf.write("\n")
-        if not command.startswith("#"):
-            command = "# " + command
-        gjf.write(command)
+        if linkzero:
+            for cmd in linkzero:
+                gjf.write(cmd)
+        if not route.startswith("#"):
+            route = "# " + route
+        gjf.write(route)
         gjf.write("\n\n")
         if comment:
             gjf.write(comment)
@@ -138,6 +146,12 @@ def save_molecule(
             gjf.write("\n")
             gjf.write(suffix)
         gjf.write("\n\n")
+
+
+def parse_link_zero(commands: str) -> List[str]:
+    commands = commands.split("%")
+    commands = [f"%{c.strip()}\n" for c in commands]
+    return commands
 
 
 def main(argv: Optional[list] = None) -> None:
@@ -157,9 +171,9 @@ def main(argv: Optional[list] = None) -> None:
             charge=args.charge,
             multipl=args.multiplicity,
             coords=mol,
-            command=args.route,
+            route=args.route,
             comment=args.dscr,
-            prefix=args.link,
+            linkzero=args.link,
             suffix=args.suffix,
             precision=args.precision,
         )

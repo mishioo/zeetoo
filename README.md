@@ -165,6 +165,7 @@ See the LICENSE.txt file for license rights and limitations (MIT).
 - supplemented sdf_to_gjf default values and help message
 - fixed typo in sdf_to_gjf CLI ("sufix" -> "suffix")
 - enabled specifying coordinates' precision in sdf_to_gjf
+- enhanced handling of link0 commands by sdf_to_gjf
 
 ## v.0.1.2
 
