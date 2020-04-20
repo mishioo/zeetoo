@@ -4,3 +4,7 @@ bild/
 __pycache__/
 *.ini
 *.egg*
+*.diff
+env/
+venv/
+build/
