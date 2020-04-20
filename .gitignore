@@ -1,6 +1,6 @@
 .idea/
 dist/
-bild/
+build/
 __pycache__/
 *.ini
 *.egg*

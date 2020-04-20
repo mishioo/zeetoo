@@ -16,6 +16,7 @@ A collection of various Python scripts created as a help in everyday work in Tea
     - [sdf_to_gjf](#sdf_to_gjf) - save molecules from .sdf file as separate .gjf files
 - [Requirements](#requirements)
 - [License & Disclaimer](#license--disclaimer)
+- [Changelog](#changelog)
 
 ## Getting Started
 
@@ -155,3 +156,18 @@ Please refer to RDKit documentation for more information.
 # License & Disclaimer
 
 See the LICENSE.txt file for license rights and limitations (MIT).
+
+# Changelog
+
+## v.0.1.2
+
+- getcdx now changes characters forbidden in file names to "-" instead of raising an exception
+- start_gui.bat should now work regardless its location
+
+## v.0.1.1
+
+- fixed import errors when run as module
+
+## v.0.1.0
+
+- initial release

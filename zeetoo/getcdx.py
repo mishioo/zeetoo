@@ -67,12 +67,18 @@ def extract_embeddings(
             text = [node.text for node in paragraph.iter(TXT) if node.text]
             text = ''.join(text)
             title = ' '.join(text.split()[:words_in_name])
+            for c in r'<>:"/\|?*':
+                if c in title:
+                    title = title.replace(c, "-")
             ole = ziphandle.read(embedded_file)
             with olefile.OleFileIO(ole) as ole_handle:
                 content = ole_handle.openstream('CONTENTS').read()
             outfile = out / (title + '.cdx')
-            with outfile.open('wb') as out_handle:
-                out_handle.write(content)
+            try:
+                with outfile.open('wb') as out_handle:
+                    out_handle.write(content)
+            except FileNotFoundError:
+                logging.warning("Cannot write file with name: %s", title)
 
 
 def get_parser():
