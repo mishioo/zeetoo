@@ -1,6 +1,8 @@
 import setuptools
 from setuptools.command.install import install
 
+from zeetoo import __author__, __verison__
+
 
 class Shortcut(install):
     def run(self):
@@ -12,8 +14,8 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="zeetoo",
-    version="0.1.2",
-    author="Michał M. Więcław",
+    version=__verison__,
+    author=__author__,
     author_email="mwieclaw@icho.edu.pl",
     license='MIT',
     description="A humble collection of various everyday utility scripts "
