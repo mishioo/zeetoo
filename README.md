@@ -159,6 +159,12 @@ See the LICENSE.txt file for license rights and limitations (MIT).
 
 # Changelog
 
+## v.0.1.3
+
+- fixed sdf_to_gjf ignoring parameters "charge" and "multiplicity"
+- supplemented sdf_to_gjf default values and help message
+- fixed typo in sdf_to_gjf CLI ("sufix" -> "suffix")
+
 ## v.0.1.2
 
 - getcdx now changes characters forbidden in file names to "-" instead of raising an exception
