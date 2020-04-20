@@ -2,7 +2,7 @@ import argparse
 import logging as lgg
 import re
 import pathlib
-from typing import Tuple, Generator, Optional, TextIO, List
+from typing import Tuple, Generator, Optional, TextIO, List, Iterable
 
 coords = re.compile(r"\s*(-?\d+\.\d+)\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)\s*(\w\w?)")
 
@@ -94,6 +94,16 @@ def get_parser(argv=None):
             "digits. Must be a positive integer. Defaults to 7."
         ),
     )
+    prsr.add_argument(
+        "--chk",
+        type=pathlib.PurePosixPath,
+        help=(
+            "Special case of link0 command ('%chk='), that may be generated for each "
+            ".gjf file individually. If given, it should be a path to a directory,"
+            "to which .chk files will be writen (without '%chk=' prefix!). Name of "
+            "the file with .chk suffix will be automatically added for each file."
+        ),
+    )
     return prsr
 
 
@@ -105,25 +115,35 @@ def get_coords(file: TextIO, line: str) -> Tuple[str, float, float, float]:
         match = coords.search(file.readline())
 
 
-def get_molecules(source: pathlib.Path) -> Generator[Tuple[str, float, float, float]]:
+def get_molecules(source: pathlib.Path) -> Iterable[Tuple[str, float, float, float]]:
     with source.open() as sdf:
         for line in sdf:
             if coords.search(line) is not None:
                 yield get_coords(sdf, line)
 
 
+def parse_link_zero(commands: str) -> List[str]:
+    commands = commands.split("%")
+    commands = (c.strip() for c in commands)
+    commands = [f"%{c}\n" for c in commands if c]
+    return commands
+
+
 def save_molecule(
     dest: pathlib.Path,
-    charge: int,
-    multipl: int,
-    coords: Tuple[str, float, float, float],
+    coords: Iterable[Tuple[str, float, float, float]],
     route: str,
+    charge: int = 0,
+    multipl: int = 1,
     comment: str = "",
     linkzero: List[str] = (),
+    chk_path: Optional[pathlib.PurePosixPath] = None,
     suffix: str = "",
     precision: int = 7
 ) -> None:
     with dest.open("w") as gjf:
+        if chk_path:
+            gjf.write(f"%chk={chk_path.joinpath(dest.name).with_suffix('.chk')}\n")
         if linkzero:
             for cmd in linkzero:
                 gjf.write(cmd)
@@ -148,12 +168,6 @@ def save_molecule(
         gjf.write("\n\n")
 
 
-def parse_link_zero(commands: str) -> List[str]:
-    commands = commands.split("%")
-    commands = [f"%{c.strip()}\n" for c in commands]
-    return commands
-
-
 def main(argv: Optional[list] = None) -> None:
     args = get_parser().parse_args(argv)
     if args.precision < 0:
@@ -164,6 +178,7 @@ def main(argv: Optional[list] = None) -> None:
     out_dir = args.out_dir if args.out_dir is not None else args.sdf.parent
     out_dir.mkdir(exist_ok=True)
     start = args.first_num
+    link_zero = parse_link_zero(args.link)
     for num, mol in enumerate(get_molecules(args.sdf)):
         output_file = out_dir / f"{gjfname}{num+start:0>3}.gjf"
         save_molecule(
@@ -173,7 +188,8 @@ def main(argv: Optional[list] = None) -> None:
             coords=mol,
             route=args.route,
             comment=args.dscr,
-            linkzero=args.link,
+            linkzero=link_zero,
+            chk_path=args.chk,
             suffix=args.suffix,
             precision=args.precision,
         )
