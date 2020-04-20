@@ -29,11 +29,12 @@ def get_parser(argv=None):
         help="Everything after molecule specification."
     )
     prsr.add_argument(
-        '-c', '--charge', required=True, type=int, help="Molecule charge."
+        '-c', '--charge', default=0, type=int,
+        help="Molecule's charge, defaults to 0."
     )
     prsr.add_argument(
-        '-m', '--multiplicity', required=True, type=int,
-        help="Molecule spin multiplicity."
+        '-m', '--multiplicity', default=1, type=int,
+        help="Molecule's spin multiplicity, defaults to 1."
     )
     prsr.add_argument(
         '-n', '--name',
@@ -76,7 +77,7 @@ def save_molecule(
         if comment:
             gjf.write(comment)
             gjf.write('\n\n')
-        gjf.write('0 1\n')
+        gjf.write(f'{charge} {multipl}\n')
         for a, x, y, z in coords:
             gjf.write(
                 f" {a: <2} {x: > .7f} {y: > .7f} {z: > .7f}\n"
