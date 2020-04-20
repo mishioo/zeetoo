@@ -76,6 +76,16 @@ def get_parser(argv=None):
             "files will start at this number."
         ),
     )
+    prsr.add_argument(
+        "-p",
+        "--precision",
+        type=int,
+        default=7,
+        help=(
+            "Desired floating point precision of coordinates as number of decimal "
+            "digits. Must be a positive integer. Defaults to 7."
+        ),
+    )
     return prsr
 
 
@@ -103,6 +113,7 @@ def save_molecule(
     comment: str = "",
     prefix: str = "",
     suffix: str = "",
+    precision: int = 7
 ) -> None:
     with dest.open("w") as gjf:
         if prefix:
@@ -117,7 +128,12 @@ def save_molecule(
             gjf.write("\n\n")
         gjf.write(f"{charge} {multipl}\n")
         for a, x, y, z in coords:
-            gjf.write(f" {a: <2} {x: > .7f} {y: > .7f} {z: > .7f}\n")
+            gjf.write(
+                f" {a: <2} "
+                f"{x: > .{precision}f} "
+                f"{y: > .{precision}f} "
+                f"{z: > .{precision}f}\n"
+            )
         if suffix:
             gjf.write("\n")
             gjf.write(suffix)
@@ -126,6 +142,10 @@ def save_molecule(
 
 def main(argv: Optional[list] = None) -> None:
     args = get_parser().parse_args(argv)
+    if args.precision < 0:
+        raise ValueError(
+            f"Precision must be a positive integer, not {args.precision}."
+        )
     gjfname = args.name if args.name is not None else args.sdf.stem
     out_dir = args.out_dir if args.out_dir is not None else args.sdf.parent
     out_dir.mkdir(exist_ok=True)
@@ -141,6 +161,7 @@ def main(argv: Optional[list] = None) -> None:
             comment=args.dscr,
             prefix=args.link,
             suffix=args.suffix,
+            precision=args.precision,
         )
 
 
