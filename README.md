@@ -166,6 +166,7 @@ See the LICENSE.txt file for license rights and limitations (MIT).
 - fixed typo in sdf_to_gjf CLI ("sufix" -> "suffix")
 - enabled specifying coordinates' precision in sdf_to_gjf
 - enhanced handling of link0 commands by sdf_to_gjf
+- removed filtering of explicitly provided non-.mol files in fixgvmol
 
 ## v.0.1.2
 
