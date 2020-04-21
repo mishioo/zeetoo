@@ -1,13 +1,6 @@
 import setuptools
-from setuptools.command.install import install
 
 from zeetoo import __author__, __verison__
-
-
-class Shortcut(install):
-    def run(self):
-        pass
-
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
