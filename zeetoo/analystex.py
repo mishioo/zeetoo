@@ -30,7 +30,7 @@ decimalrange = decimal + r"(?: ?[-–,] ?" + decimal + ")?"
 numsrange = number + r"(?: ?[-–,] ?" + number + ")?"
 coupling = r"\((\w+)(?:, ?J=(.*?))?(?:, ?(\d+)\w+)\)"
 hnmrshifts = "(" + decimalrange + ") ?" + coupling
-rotpatt = "(?P<value>" + decimal + r") \(c = (?P<conc>" + decimal + r"), solv. (?P<solvent>[\w\d]+)\)"
+rotpatt = "(?P<value>" + number + r") \(c = (?P<conc>" + decimal + r"), solv. (?P<solvent>[\w\d]+)\)"
 
 
 def _parse_nmr(text, values_regex):
@@ -64,8 +64,8 @@ def parse_ir(text):
 def parse_ms(text):
     data = {
         "method": re.search(r"\((.*?)\)", text).group(1),
-        "found": re.search(r"found.*?(" + decimal + ")", text).group(1),
-        "calcd": re.search(r"cal(?:culate)?d.*?(" + decimal + ")", text).group(1),
+        "found": re.search(r"found.*?(" + number + ")", text).group(1),
+        "calcd": re.search(r"cal(?:culate)?d.*?(" + number + ")", text).group(1),
     }
     return data
 
@@ -93,7 +93,10 @@ def read_molecule(handle):
     data = {}
     line = None
     while not line:
-        line = handle.readline().strip()
+        rawline = handle.readline()
+        if not rawline:
+            raise EOFError
+        line = rawline.strip()
     logger.info(f"Parsing compound '{line}'.")
     data["id"] = line
     data["name"] = handle.readline().strip()
@@ -174,7 +177,7 @@ def main():
     else:
         level = logging.WARNING
     logging.basicConfig(level=level)
-    with open(args.dest) as dest:
+    with open(args.dest, 'w') as dest:
         with codecs.open(args.source, encoding="utf-8") as source:
             while True:
                 try:
