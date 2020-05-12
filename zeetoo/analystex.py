@@ -9,6 +9,19 @@ logger = logging.getLogger(__name__)
 prsr = argparse.ArgumentParser()
 prsr.add_argument("source", type=str)
 prsr.add_argument("dest", type=str, default="./analyses.tex")
+verbosity = prsr.add_mutually_exclusive_group()
+verbosity.add_argument(
+    '--verbose', action='store_true',
+    help='Print more informations to stdout.'
+)
+verbosity.add_argument(
+    '--debug', action='store_true',
+    help='Print debug logs to stdout.'
+)
+verbosity.add_argument(
+    '--silent', action='store_true',
+    help='Only errors are displayed.'
+)
 
 
 number = r"-?\d+(?:\.\d+)?"
@@ -81,6 +94,7 @@ def read_molecule(handle):
     line = None
     while not line:
         line = handle.readline().strip()
+    logger.info(f"Parsing compound '{line}'.")
     data["id"] = line
     data["name"] = handle.readline().strip()
     data["hnmr"] = parse_coupled_nmr(handle.readline().strip())
@@ -151,14 +165,24 @@ def format_latex(data):
 
 def main():
     args = prsr.parse_args()
+    if args.debug:
+        level = logging.DEBUG
+    elif args.verbose:
+        level = logging.INFO
+    elif args.silent:
+        level = logging.ERROR
+    else:
+        level = logging.WARNING
+    logging.basicConfig(level=level)
     with open(args.dest) as dest:
         with codecs.open(args.source, encoding="utf-8") as source:
             while True:
                 try:
                     data = read_molecule(source)
                 except EOFError:
+                    logger.info("No more data found.")
                     break
-        dest.write(format_latex(data))
+                dest.write(format_latex(data))
 
 
 if __name__ == '__main__':
