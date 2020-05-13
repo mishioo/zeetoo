@@ -9,6 +9,8 @@ logger = logging.getLogger(__name__)
 prsr = argparse.ArgumentParser()
 prsr.add_argument("source", type=str)
 prsr.add_argument("dest", type=str, default="./analyses.tex")
+prsr.add_argument("-s", "--sep", type=str, default="; ")
+prsr.add_argument("-i", "--indent", type=str, default="\t")
 verbosity = prsr.add_mutually_exclusive_group()
 verbosity.add_argument(
     '--verbose', action='store_true',
@@ -122,9 +124,9 @@ def format_iupac(name):
     return f"\\iupac{{{name}}}"
 
 
-def format_hnmr(data):
-    vals = re.findall(decimal, data[0])  # shift values
-    if len(vals) > 1 and "," in data[0]:
+def format_values(values):
+    vals = re.findall(number, values)  # shift values
+    if len(vals) > 1 and "," in values:
         vals = f"\\numlist{{{';'.join(vals)}}}"
         # using spectroscopy: vals = ", ".join(f"\\val{{{v}}}" for v in vals)
     elif len(vals) == 2:
@@ -133,6 +135,11 @@ def format_hnmr(data):
     else:
         vals = f"\\num{{{vals[0]}}}"
         # using spectroscopy: vals = f"\\val{{{vals[0]}}}"
+    return vals
+
+
+def format_hnmr(data):
+    vals = format_values(data[0])
     vals += f" ({data[1]}, "  # peak type
     if data[2]:
         jconsts = re.findall(decimal, data[2])  # coupling constants
@@ -141,29 +148,28 @@ def format_hnmr(data):
     return vals
 
 
-def format_latex(data):
-    latex = (
-        "\\begin{experimental}\n"
-        f"\t{format_iupac(data['name'])} (\\refcmpd{{{data['id']}}})\n"
-        "\t\\data*{yield} \\SI{100}{\\percent}\n"
-        f"\t\\data{{mp.}} \\SI{{{data['melting']['value']}}}{{\\celsius}}\n"
+def format_latex(data, sep=";", indent="\t"):
+    joint = f"{sep}\n{indent}"
+    latex = joint.join([
+
+        f"{format_iupac(data['name'])} (\\refcmpd{{{data['id']}}})",
+        "\\data*{yield} \\SI{999}{\\percent} (white needles)",
+        f"\\data{{mp.}} {format_values(data['melting']['value'])}\\si{{\\celsius}}",
         
-        f"\t\\NMR({data['hnmr']['frequency']})[{data['hnmr']['solvent']}] "
-        + ", ".join([format_hnmr(v) for v in data['hnmr']['values']]) + "\n"
+        f"\\NMR({data['hnmr']['frequency']})[{data['hnmr']['solvent']}] "
+        + ", ".join([format_hnmr(v) for v in data['hnmr']['values']]),
 
-        f"\t\\NMR{{13,C}}({data['cnmr']['frequency']})[{data['cnmr']['solvent']}] "
-        + ", ".join([f"\\num{{{v}}}" for v in data['cnmr']['values']]) + "\n"
+        f"\\NMR{{13,C}}({data['cnmr']['frequency']})[{data['cnmr']['solvent']}] "
+        + ", ".join([f"\\num{{{v}}}" for v in data['cnmr']['values']]),
         
-        f"\t\\data{{IR}}[{data['ir']['method']}] "
-        + ", ".join([f"\\num{{{v}}}" for v in data['ir']['values']]) + "\n"
+        f"\\data{{IR}}[{data['ir']['method']}] "
+        + ", ".join([f"\\num{{{v}}}" for v in data['ir']['values']]),
 
-        f"\t\\data{{HRMS}} ({data['ms']['method']}) m/z calcd for \\ch{{C0H0}}: "
-        f"\\num{{{data['ms']['calcd']}}} found: \\num{{{data['ms']['found']}}}\n"
+        f"\\data{{HRMS}} ({data['ms']['method']}) m/z calcd for \\ch{{C0H0}}: "
+        f"\\num{{{data['ms']['calcd']}}} found: \\num{{{data['ms']['found']}}}",
 
-        "\\end{experimental}\n"
-        "\n"
-    )
-    return latex
+    ])
+    return f"\\begin{{experimental}}\n\t{latex}\n\\end{{experimental}}\n\n"
 
 
 def main():
@@ -185,7 +191,7 @@ def main():
                 except EOFError:
                     logger.info("No more data found.")
                     break
-                dest.write(format_latex(data))
+                dest.write(format_latex(data, args.sep, args.indent))
 
 
 if __name__ == '__main__':
