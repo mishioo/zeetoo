@@ -36,7 +36,7 @@ rotpatt = "(?P<value>" + number + r") \(c = (?P<conc>" + decimal + r"), solv. (?
 
 
 def _parse_nmr(text, values_regex):
-    match = re.match(r"(\d+\w+ NMR) \((\d+) ?(?:MHz)?, ?([\d\w]+\))", text)
+    match = re.match(r"(\d+\w+ NMR) \((\d+) ?(?:MHz)?, ?([\d\w]+)\)", text)
     analysis, frequency, solvent = match.groups()
     values = re.findall(values_regex, text)
     data = {
@@ -57,7 +57,7 @@ def parse_uncoupled_nmr(text):
 
 def parse_ir(text):
     data = {
-        "method": re.search(r"\((.*?)\)", text).group(0),
+        "method": re.search(r"\((.*?)\)", text).group(1),
         "values": re.findall(r"(\d{3,4})(?: cm-1)?", text),
     }
     return data
