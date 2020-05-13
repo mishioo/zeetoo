@@ -112,8 +112,14 @@ def read_molecule(handle):
 
 
 def format_iupac(name):
+    name = re.sub(  # substitute Cahn-Ingol-Prelog descriptors
+        r"\((\d*[\'\"]?\w?(?:R|S)[\d\w, \'\"]*?)\)",
+        r"\cip{\1}",
+        name
+    )  # only those wrapped in parentheses are substituted
+    # TODO: make it handle non-parenthesized descriptors
     name = re.sub(  # substitute easily replaced specifiers
-        "\\b(\\d*)(H|O|N|P|R|S|D|L|Z|E|tert|sec|cis|trans|fac|mer|sin|ter|syn|anti)\\b",
+        "\\b(\\d*)(H|O|N|P|D|L|Z|E|tert|sec|cis|trans|fac|mer|sin|ter|syn|anti)\\b",
         r"\1\\\2",
         name
     )
