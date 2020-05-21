@@ -4,7 +4,10 @@ import re
 import argparse
 from itertools import chain
 from pathlib import Path
-import logging as lgg
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 number_group = r'\s*(-?\d+\.?\d*)'
 number = number_group.replace('(', '').replace(')', '')
@@ -18,9 +21,9 @@ energies = re.compile(
     r' Sum of electronic and thermal Enthalpies=\s*(-?\d+\.?\d*)\n'
     r' Sum of electronic and thermal Free Energies=\s*(-?\d+\.?\d*)'
 )  # use .search(text).groups()
-frequencies = re.compile(
-    'Frequencies(?:\s+(?:Fr= \d+)?--\s+)' + 3 * number_group
-)
+imag = re.compile(
+    r"\*\s+(\d+) imaginary frequencies \(negative Signs\)"
+)  # use match = imag.search(text); if match: match.group(1)
 
 
 def get_args(argv=None):
@@ -55,15 +58,20 @@ def get_args(argv=None):
              'column COL. Column letter or 1-based numerical index may be '
              'given.'
     )
-    log = prs.add_mutually_exclusive_group()
-    log.add_argument(
+    prs.add_argument(
         '-u', '--unconverged', action='store_true',
         help='Print names of files that did not converged.'
     )
+    log = prs.add_mutually_exclusive_group()
     log.add_argument(
-        '-s', '--silent', action='store_true',
+        '-s', '--silent', action='store_const', const=logging.WARNING, dest="loglevel",
         help='Suppress printing to sdtout.'
     )
+    log.add_argument(
+        '-d', '--debug', action='store_const', const=logging.DEBUG, dest="loglevel",
+        help='Print debug information to stdout.'
+    )
+    prs.set_defaults(loglevel=logging.INFO)
     args = prs.parse_args(argv)
     if args.append_entry is not None and args.file is None:
         prs.error("--append_entry needs --file to be specified.")
@@ -73,14 +81,16 @@ def get_args(argv=None):
 def get_data(path):
     with path.open('r') as file:
         text = file.read()
+    logger.debug("Parsing file %s", path.name)
     ens = energies.search(text)
-    freqs = frequencies.findall(text)
-    if not ens or not freqs:
-        lgg.debug(f'NOT CONVERGED: {path.name}')
+    freqs = imag.search(text)
+    freqs = freqs.group(1) if freqs else 0
+    if not ens:
+        logger.debug("NOT CONVERGED: %s (no energies found).", path.name)
         return []
     else:
-        imag = sum(float(f) < 0 for line in freqs for f in line)
-        return [*ens.groups(), imag]
+        logger.debug("imag.freqs = %s found in %s", freqs, path.name)
+        return [*ens.groups(), freqs]
 
 
 def select_data(line, args):
@@ -107,7 +117,7 @@ def select_data(line, args):
 
 def main(argv=None):
     args = get_args(argv)
-    lgg.basicConfig(level='WARNING' if args.silent else 'INFO')
+    logging.basicConfig(level=args.loglevel)
     dirs = (path for path in args.files if path.is_dir())
     inner_files = (
         path for dir in dirs for path in dir.iterdir()
@@ -141,7 +151,7 @@ def main(argv=None):
             # only unconverged requested
             continue
         length = len(file) if len(file) > length else length
-        lgg.info(
+        logger.info(
             ' '.join((
                 f"{file: <{length}} -",
                 *("{}= {}".format(*e) for e in entries)
@@ -162,9 +172,9 @@ def main(argv=None):
                 *(e[1] for e in entries)
             ])
     if args.unconverged:
-        lgg.info(f"{len(unconverged)} unconverged files:")
+        logger.info(f"{len(unconverged)} unconverged files:")
         for filename in unconverged:
-            lgg.info(f'\t{filename}')
+            logger.info(f'\t{filename}')
     if args.file:
         wb.save(str(args.file))
 

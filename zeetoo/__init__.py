@@ -1,2 +1,2 @@
 __author__ = "Michał M. Więcław"
-__verison__ = "0.1.3"
+__verison__ = "0.1.4"
