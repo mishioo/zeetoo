@@ -68,6 +68,7 @@ def parse_ms(text):
         "method": re.search(r"\((.*?)\)", text).group(1),
         "found": re.search(r"found.*?(" + number + ")", text).group(1),
         "calcd": re.search(r"cal(?:culate)?d.*?(" + number + ")", text).group(1),
+        "formula": re.search(r"for ([\w\d]*)", text).group(1),
     }
     return data
 
@@ -79,6 +80,11 @@ def parse_rotation(text):
 
 def parse_melting(text):
     return {"value": re.search(r"(" + numsrange + ")", text).group(0)}
+    
+
+def parse_yield(text):
+    match = re.search(r"(\d+)%?, ([\w\s]+)", text)
+    return match.groups()
 
 
 def read_molecule(handle):
@@ -102,19 +108,22 @@ def read_molecule(handle):
     logger.info(f"Parsing compound '{line}'.")
     data["id"] = line
     data["name"] = handle.readline().strip()
+    data["yield"], data["form"] = parse_yield(handle.readline().strip())
     data["hnmr"] = parse_coupled_nmr(handle.readline().strip())
     data["cnmr"] = parse_uncoupled_nmr(handle.readline().strip())
     data["ir"] = parse_ir(handle.readline().strip())
     data["ms"] = parse_ms(handle.readline().strip())
     data["rotation"] = parse_rotation(handle.readline().strip())
-    data["melting"] = parse_melting(handle.readline().strip())
+    nextline = handle.readline().strip()
+    if nextline:
+        data["melting"] = parse_melting(nextline)
     return data
 
 
 def format_iupac(name):
     name = re.sub(  # substitute Cahn-Ingol-Prelog descriptors
         r"\((\d*[\'\"]?\w?(?:R|S)[\d\w, \'\"]*?)\)",
-        r"\cip{\1}",
+        r"\\cip{\1}",
         name
     )  # only those wrapped in parentheses are substituted
     # TODO: make it handle non-parenthesized descriptors
@@ -124,8 +133,8 @@ def format_iupac(name):
         name
     )
     name = re.sub(r"\\b(\\d*)S\\b", r"\1\\Sf", name)  # for sulphur
-    name = re.sub(r"(\\)?\'", "\\chemprime", name)  # for apostrophes
-    name = re.sub(r"(\\)?\"", "\\chemprime\\chemprime", name)  # for apostrophes
+    name = re.sub(r"(\\)?\'", r"\\chemprime", name)  # for apostrophes
+    name = re.sub(r"(\\)?\"", r"\\chemprime\\chemprime", name)  # for apostrophes
     # TODO: add greek letters
     return f"\\iupac{{{name}}}"
 
@@ -156,26 +165,29 @@ def format_hnmr(data):
 
 def format_latex(data, sep=";", indent="\t"):
     joint = f"{sep}\n{indent}"
-    latex = joint.join([
-
-        f"{format_iupac(data['name'])} (\\refcmpd{{{data['id']}}})",
-        "\\data*{yield} \\SI{999}{\\percent} (white needles)",
-        f"\\data{{mp.}} {format_values(data['melting']['value'])}\\si{{\\celsius}}",
-        
+    latex_list = [
+        f"{format_iupac(data['name'])} (\\refcmpd{{}})  % {data['id']}",
+        f"\\data*{{yield}} \\SI{{{data['yield']}}}{{\\percent}} ({data['form']})",
+    ]
+    if "melting" in data:
+        latex_list.append(
+            f"\\data{{mp.}} {format_values(data['melting']['value'])}\\si{{\\celsius}}"
+        )
+    latex_list.extend([
         f"\\NMR({data['hnmr']['frequency']})[{data['hnmr']['solvent']}] "
         + ", ".join([format_hnmr(v) for v in data['hnmr']['values']]),
 
         f"\\NMR{{13,C}}({data['cnmr']['frequency']})[{data['cnmr']['solvent']}] "
-        + ", ".join([f"\\num{{{v}}}" for v in data['cnmr']['values']]),
+        + f"\\numlist{{{'; '.join(data['cnmr']['values'])}}}",
         
         f"\\data{{IR}}[{data['ir']['method']}] "
-        + ", ".join([f"\\num{{{v}}}" for v in data['ir']['values']]),
+        + f"\\numlist{{{'; '.join(data['ir']['values'])}}}",
 
-        f"\\data{{HRMS}} ({data['ms']['method']}) m/z calcd for \\ch{{C0H0}}: "
+        f"\\data{{HRMS}} ({data['ms']['method']}) m/z calcd for \\ch{{{data['ms']['formula']}}}: "
         f"\\num{{{data['ms']['calcd']}}} found: \\num{{{data['ms']['found']}}}",
-
     ])
-    return f"\\begin{{experimental}}\n\t{latex}\n\\end{{experimental}}\n\n"
+    latex = joint.join(latex_list)
+    return f"\\begin{{experimental}}\n{indent}{latex}\n\\end{{experimental}}\n\n"
 
 
 def main():
