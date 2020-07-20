@@ -1,7 +1,9 @@
 import argparse
 import re
+import csv
 import codecs
 import logging
+from collections import defaultdict
 
 
 logger = logging.getLogger(__name__)
@@ -11,6 +13,10 @@ prsr.add_argument("source", type=str)
 prsr.add_argument("dest", type=str, default="./analyses.tex")
 prsr.add_argument("-s", "--sep", type=str, default="; ")
 prsr.add_argument("-i", "--indent", type=str, default="\t")
+prsr.add_argument(
+    "-n", "--namesfile", type=str,
+    help="File containing pairs of cmpd's symbol and in-latex label in csv format."
+    )
 verbosity = prsr.add_mutually_exclusive_group()
 verbosity.add_argument(
     '--verbose', action='store_true',
@@ -166,7 +172,7 @@ def format_hnmr(data):
 def format_latex(data, sep=";", indent="\t"):
     joint = f"{sep}\n{indent}"
     latex_list = [
-        f"{format_iupac(data['name'])} (\\refcmpd{{}})  % {data['id']}",
+        f"{format_iupac(data['name'])} (\\refcmpd{{{data['label']}}})  % {data['id']}",
         f"\\data*{{yield}} \\SI{{{data['yield']}}}{{\\percent}} ({data['form']})",
     ]
     if "melting" in data:
@@ -205,6 +211,11 @@ def main():
     else:
         level = logging.WARNING
     logging.basicConfig(level=level)
+    nameslist = defaultdict(lambda: "")
+    if args.namesfile:
+        with open(args.namesfile, "r", newline='') as csvfile:
+            csvreader = csv.reader(csvfile)
+            nameslist.update([row for row in csvreader])
     with open(args.dest, 'w') as dest:
         with codecs.open(args.source, encoding="utf-8") as source:
             while True:
@@ -213,6 +224,7 @@ def main():
                 except EOFError:
                     logger.info("No more data found.")
                     break
+                data['label'] = nameslist[data['id']]
                 dest.write(format_latex(data, args.sep, args.indent))
 
 
