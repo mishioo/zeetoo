@@ -174,7 +174,7 @@ def format_latex(data, sep=";", indent="\t"):
             f"\\data{{mp.}} {format_values(data['melting']['value'])}\\si{{\\celsius}}"
         )
     latex_list.extend([
-        f"\\data{{specific rot.}} \\number{{{data['rotation']['value']}}} "
+        f"\\data{{specific rot.}} \\num{{{data['rotation']['value']}}} "
         f"($c = {data['rotation']['conc']}$, "
         f"\\ch{{{data['rotation']['solvent']}}})",
     
