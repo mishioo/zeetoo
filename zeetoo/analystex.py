@@ -172,7 +172,7 @@ def format_hnmr(data):
 def format_latex(data, sep=";", indent="\t"):
     joint = f"{sep}\n{indent}"
     latex_list = [
-        f"{format_iupac(data['name'])} (\\refcmpd{{{data['label']}}})  % {data['id']}",
+        f"{format_iupac(data['name'])} ({data['label']})  % {data['id']}",
         f"\\data*{{yield}} \\SI{{{data['yield']}}}{{\\percent}} ({data['form']})",
     ]
     if "melting" in data:
@@ -198,6 +198,28 @@ def format_latex(data, sep=";", indent="\t"):
     ])
     latex = joint.join(latex_list)
     return f"\\begin{{experimental}}\n{indent}{latex}\n\\end{{experimental}}\n\n"
+    
+
+def get_labels(
+    labelsfile=None, 
+    lblfmt="\\cmpd{{{}}}", 
+    prefmt="\\textbf{{{}}}", 
+    postfmt="\\textbf{{{}}}",
+    separator="",
+):
+    labels = defaultdict(lambda: "")
+    formatters = (lblfmt, prefmt, postfmt)
+    if labelsfile is not None:
+        with open(labelsfile, "r", newline='') as csvfile:
+            csvreader = csv.reader(csvfile)
+            for id_, *args in csvreader:
+                formatted = [
+                    fmt.format(part) for part, fmt in zip(args, formatters)
+                ]
+                if len(formatted) > 1:
+                    formatted[0], formatted[1] = formatted[1], formatted[0]
+                labels[id_] = separator.join(formatted)
+    return labels
 
 
 def main():
@@ -211,11 +233,7 @@ def main():
     else:
         level = logging.WARNING
     logging.basicConfig(level=level)
-    nameslist = defaultdict(lambda: "")
-    if args.namesfile:
-        with open(args.namesfile, "r", newline='') as csvfile:
-            csvreader = csv.reader(csvfile)
-            nameslist.update([row for row in csvreader])
+    labels = get_labels(args.namesfile)
     with open(args.dest, 'w') as dest:
         with codecs.open(args.source, encoding="utf-8") as source:
             while True:
@@ -224,7 +242,7 @@ def main():
                 except EOFError:
                     logger.info("No more data found.")
                     break
-                data['label'] = nameslist[data['id']]
+                data['label'] = labels[data['id']]
                 dest.write(format_latex(data, args.sep, args.indent))
 
 
