@@ -188,7 +188,7 @@ def format_latex(data, sep=";", indent="\t"):
         + ", ".join([format_hnmr(v) for v in data['hnmr']['values']]),
 
         f"\\NMR{{13,C}}({data['cnmr']['frequency']})[{data['cnmr']['solvent']}] "
-        + f"\\numlist{{{'; '.join(data['cnmr']['values'])}}}",
+        + f"\\numlist{{{'; '.join([f'{float(n):.1f}' for n in data['cnmr']['values']])}}}",
         
         f"\\data{{IR}}[{data['ir']['method']}] "
         + f"\\numlist{{{'; '.join(data['ir']['values'])}}}",
