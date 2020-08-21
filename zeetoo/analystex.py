@@ -38,7 +38,7 @@ decimalrange = decimal + r"(?: ?[-–,] ?" + decimal + ")?"
 numsrange = number + r"(?: ?[-–,] ?" + number + ")?"
 coupling = r"\((\w+)(?:, ?J ?= ?(.*?))?(?:, ?(\d+)\w+)\)"
 hnmrshifts = "(" + decimalrange + ") ?" + coupling
-rotpatt = "(?P<value>" + number + r") \(c = (?P<conc>" + decimal + r"), solv. (?P<solvent>[\w\d]+)\)"
+rotpatt = "(?P<value>" + number + r") \(c ?= ?(?P<conc>" + decimal + r"), solv. (?P<solvent>[\w\d]+)\)"
 
 
 def _parse_nmr(text, values_regex):
