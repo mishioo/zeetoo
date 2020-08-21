@@ -202,7 +202,7 @@ def format_latex(data, sep=";", indent="\t"):
 
 def get_labels(
     labelsfile=None, 
-    lblfmt="\\cmpd{{{}}}", 
+    lblfmt="\\refcmpd{{{}}}", 
     prefmt="\\textbf{{{}}}", 
     postfmt="\\textbf{{{}}}",
     separator="",
