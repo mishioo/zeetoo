@@ -8,6 +8,7 @@ A collection of various Python scripts created as a help in everyday work in Tea
     - [Python API](#python-api)
     - [Graphical User Interface](#graphical-user-interface)
 - [Description of modules](#description-of-modules)
+    - [analystex](#analystex) - converts plain text compound analyses to LaTeX
     - [backuper](#backuper) - simple automated backup tool for Windows
     - [confsearch](#confsearch) - find conformers of given molecule using RDKit
     - [fixgvmol](#fixgvmol) - correct .mol files created with GaussView software
@@ -57,6 +58,23 @@ Please refer to the [backuper section](#backuper) for details.
 GUIs for other modules will probably be available in near future.
 
 ## Description of Modules
+
+## analystex
+
+Parses plain text file containing list of analyses of chemical compounds and saves it in LaTeX format.
+Resulting LaTeX code requires `siunitx` package and `chemmacros` package with 'spectroscopy' option.
+Input file must contain following data entries in specified order, one entry (type of analysis) per line:
+- compound's ID,
+- compound's name,
+- yield (Yield: XX%, compounds form),
+- <sup>1</sup>HNMR (1H NMR (<frequency> MHz, <solvent_as_formula>) δ = <shift/range> (<multiplicity>, <protons>H), comma separated),
+- <sup>13</sup>CNMR (13C NMR (<frequency> MHz, <solvent_as_formula>) δ = <value>, comma separated),
+- IR peaks (IR (<method>) <value> cm-1, comma separated),
+- HRMS (HRMS (<method>) for <formula>: found – <value>, calculated – <value>),
+- specific rotation (α = <value> (c = <concentration>, solv. <solvent>)),
+- melting point (m.p. <value> – <value>) (optional).
+
+Data sets should be separated by an empty line.
 
 ## backuper
 
@@ -158,6 +176,11 @@ Please refer to RDKit documentation for more information.
 See the LICENSE.txt file for license rights and limitations (MIT).
 
 # Changelog
+
+## v.0.1.4
+
+- added `analystex` script
+- fixed "run now" function in backuper's GUI
 
 ## v.0.1.3
 
