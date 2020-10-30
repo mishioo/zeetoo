@@ -272,7 +272,7 @@ class App(tk.Tk):
             logging.debug('Could not change button state')
 
     def run_now(self):
-        thread = threading.Thread(target=self._run, args=[self.backuper])
+        thread = threading.Thread(target=self._run)
         thread.start()
 
     def fill_gui(self):
