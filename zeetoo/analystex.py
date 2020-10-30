@@ -1,7 +1,9 @@
 import argparse
 import re
+import csv
 import codecs
 import logging
+from collections import defaultdict
 
 
 logger = logging.getLogger(__name__)
@@ -11,6 +13,10 @@ prsr.add_argument("source", type=str)
 prsr.add_argument("dest", type=str, default="./analyses.tex")
 prsr.add_argument("-s", "--sep", type=str, default="; ")
 prsr.add_argument("-i", "--indent", type=str, default="\t")
+prsr.add_argument(
+    "-n", "--namesfile", type=str,
+    help="File containing pairs of cmpd's symbol and in-latex label in csv format."
+    )
 verbosity = prsr.add_mutually_exclusive_group()
 verbosity.add_argument(
     '--verbose', action='store_true',
@@ -30,9 +36,9 @@ number = r"-?\d+(?:\.\d+)?"
 decimal = r"-?\d+\.\d+"
 decimalrange = decimal + r"(?: ?[-–,] ?" + decimal + ")?"
 numsrange = number + r"(?: ?[-–,] ?" + number + ")?"
-coupling = r"\((\w+)(?:, ?J=(.*?))?(?:, ?(\d+)\w+)\)"
+coupling = r"\((\w+)(?:, ?J ?= ?(.*?))?(?:, ?(\d+)\w+)\)"
 hnmrshifts = "(" + decimalrange + ") ?" + coupling
-rotpatt = "(?P<value>" + number + r") \(c = (?P<conc>" + decimal + r"), solv. (?P<solvent>[\w\d]+)\)"
+rotpatt = "(?P<value>" + number + r") \(c ?= ?(?P<conc>" + decimal + r"), solv. (?P<solvent>[\w\d]+)\)"
 
 
 def _parse_nmr(text, values_regex):
@@ -68,6 +74,7 @@ def parse_ms(text):
         "method": re.search(r"\((.*?)\)", text).group(1),
         "found": re.search(r"found.*?(" + number + ")", text).group(1),
         "calcd": re.search(r"cal(?:culate)?d.*?(" + number + ")", text).group(1),
+        "formula": re.search(r"for ([\w\d]*)", text).group(1),
     }
     return data
 
@@ -79,6 +86,11 @@ def parse_rotation(text):
 
 def parse_melting(text):
     return {"value": re.search(r"(" + numsrange + ")", text).group(0)}
+    
+
+def parse_yield(text):
+    match = re.search(r"(\d+)%?, ([\w\s]+)", text)
+    return match.groups()
 
 
 def read_molecule(handle):
@@ -102,19 +114,22 @@ def read_molecule(handle):
     logger.info(f"Parsing compound '{line}'.")
     data["id"] = line
     data["name"] = handle.readline().strip()
+    data["yield"], data["form"] = parse_yield(handle.readline().strip())
     data["hnmr"] = parse_coupled_nmr(handle.readline().strip())
     data["cnmr"] = parse_uncoupled_nmr(handle.readline().strip())
     data["ir"] = parse_ir(handle.readline().strip())
     data["ms"] = parse_ms(handle.readline().strip())
     data["rotation"] = parse_rotation(handle.readline().strip())
-    data["melting"] = parse_melting(handle.readline().strip())
+    nextline = handle.readline().strip()
+    if nextline:
+        data["melting"] = parse_melting(nextline)
     return data
 
 
 def format_iupac(name):
     name = re.sub(  # substitute Cahn-Ingol-Prelog descriptors
         r"\((\d*[\'\"]?\w?(?:R|S)[\d\w, \'\"]*?)\)",
-        r"\cip{\1}",
+        r"\\cip{\1}",
         name
     )  # only those wrapped in parentheses are substituted
     # TODO: make it handle non-parenthesized descriptors
@@ -124,8 +139,8 @@ def format_iupac(name):
         name
     )
     name = re.sub(r"\\b(\\d*)S\\b", r"\1\\Sf", name)  # for sulphur
-    name = re.sub(r"(\\)?\'", "\\chemprime", name)  # for apostrophes
-    name = re.sub(r"(\\)?\"", "\\chemprime\\chemprime", name)  # for apostrophes
+    name = re.sub(r"(\\)?\'", r"\\chemprime", name)  # for apostrophes
+    name = re.sub(r"(\\)?\"", r"\\chemprime\\chemprime", name)  # for apostrophes
     # TODO: add greek letters
     return f"\\iupac{{{name}}}"
 
@@ -156,26 +171,55 @@ def format_hnmr(data):
 
 def format_latex(data, sep=";", indent="\t"):
     joint = f"{sep}\n{indent}"
-    latex = joint.join([
-
-        f"{format_iupac(data['name'])} (\\refcmpd{{{data['id']}}})",
-        "\\data*{yield} \\SI{999}{\\percent} (white needles)",
-        f"\\data{{mp.}} {format_values(data['melting']['value'])}\\si{{\\celsius}}",
-        
+    latex_list = [
+        f"{format_iupac(data['name'])} ({data['label']})  % {data['id']}",
+        f"\\data*{{yield}} \\SI{{{data['yield']}}}{{\\percent}} ({data['form']})",
+    ]
+    if "melting" in data:
+        latex_list.append(
+            f"\\data{{mp.}} {format_values(data['melting']['value'])}\\si{{\\celsius}}"
+        )
+    latex_list.extend([
+        f"\\data{{specific rot.}} \\num{{{data['rotation']['value']}}} "
+        f"($c = {data['rotation']['conc']}$, "
+        f"\\ch{{{data['rotation']['solvent']}}})",
+    
         f"\\NMR({data['hnmr']['frequency']})[{data['hnmr']['solvent']}] "
         + ", ".join([format_hnmr(v) for v in data['hnmr']['values']]),
 
         f"\\NMR{{13,C}}({data['cnmr']['frequency']})[{data['cnmr']['solvent']}] "
-        + ", ".join([f"\\num{{{v}}}" for v in data['cnmr']['values']]),
+        + f"\\numlist{{{'; '.join([f'{float(n):.1f}' for n in data['cnmr']['values']])}}}",
         
         f"\\data{{IR}}[{data['ir']['method']}] "
-        + ", ".join([f"\\num{{{v}}}" for v in data['ir']['values']]),
+        + f"\\numlist{{{'; '.join(data['ir']['values'])}}}",
 
-        f"\\data{{HRMS}} ({data['ms']['method']}) m/z calcd for \\ch{{C0H0}}: "
+        f"\\data{{HRMS}} ({data['ms']['method']}) m/z calcd for \\ch{{{data['ms']['formula']}}}: "
         f"\\num{{{data['ms']['calcd']}}} found: \\num{{{data['ms']['found']}}}",
-
     ])
-    return f"\\begin{{experimental}}\n\t{latex}\n\\end{{experimental}}\n\n"
+    latex = joint.join(latex_list)
+    return f"\\begin{{experimental}}\n{indent}{latex}\n\\end{{experimental}}\n\n"
+    
+
+def get_labels(
+    labelsfile=None, 
+    lblfmt="\\refcmpd{{{}}}", 
+    prefmt="\\textbf{{{}}}", 
+    postfmt="\\textbf{{{}}}",
+    separator="",
+):
+    labels = defaultdict(lambda: "")
+    formatters = (lblfmt, prefmt, postfmt)
+    if labelsfile is not None:
+        with open(labelsfile, "r", newline='') as csvfile:
+            csvreader = csv.reader(csvfile)
+            for id_, *args in csvreader:
+                formatted = [
+                    fmt.format(part) for part, fmt in zip(args, formatters)
+                ]
+                if len(formatted) > 1:
+                    formatted[0], formatted[1] = formatted[1], formatted[0]
+                labels[id_] = separator.join(formatted)
+    return labels
 
 
 def main():
@@ -189,6 +233,7 @@ def main():
     else:
         level = logging.WARNING
     logging.basicConfig(level=level)
+    labels = get_labels(args.namesfile)
     with open(args.dest, 'w') as dest:
         with codecs.open(args.source, encoding="utf-8") as source:
             while True:
@@ -197,6 +242,7 @@ def main():
                 except EOFError:
                     logger.info("No more data found.")
                     break
+                data['label'] = labels[data['id']]
                 dest.write(format_latex(data, args.sep, args.indent))
 
 
