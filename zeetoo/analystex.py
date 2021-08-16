@@ -4,13 +4,82 @@ import csv
 import codecs
 import logging
 from collections import defaultdict
+import tkinter as tk
+import io
+import traceback
+import sys
 
 
 logger = logging.getLogger(__name__)
 
+
+class App(tk.Tk):
+    def __init__(self, indent, sep, labels):
+        super().__init__()
+        self.title("Tex-ify analyses")
+
+        self.indent = indent
+        self.sep = sep
+        self.labels = labels
+
+        inframe = tk.LabelFrame(self, text="Paste in analyses here")
+        inframe.pack(expand=True, fill=tk.BOTH, side=tk.TOP)
+        outframe = tk.LabelFrame(self, text="Tex-ifyed for copy")
+        outframe.pack(expand=True, fill=tk.BOTH, side=tk.TOP)
+
+        self.intext = tk.Text(inframe)
+        self.intext.pack(expand=True, fill=tk.BOTH, side=tk.TOP)
+
+        self.outtext = tk.Text(outframe)
+        self.outtext.pack(expand=True, fill=tk.BOTH, side=tk.TOP)
+
+        tk.Button(self, text="Tex-ify", command=self._parse).pack(expand=True, fill=tk.X, side='left')
+        tk.Button(self, text="Automatic", command=self._auto).pack(expand=True, fill=tk.X, side='left')
+        tk.Button(self, text="Copy", command=self._copy).pack(expand=True, fill=tk.X, side='left')
+
+        self._error = None
+
+    def _auto(self):
+        text = self.selection_get(selection = "CLIPBOARD")
+        self.intext.delete('1.0', 'end')
+        self.intext.insert('1.0', text)
+        self._parse()
+        if not self._error:
+            self._copy()
+
+    def _parse(self):
+        self._error = None
+        text = self.intext.get('1.0', 'end')
+        handle = io.StringIO(text)
+        try:
+            data = read_molecule(handle)
+            data['label'] = self.labels[data['id']]
+            text = format_latex(data, self.sep, self.indent)
+        except Exception as error:
+            self._error = error
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            reason = traceback.format_exception(exc_type, exc_value, exc_traceback)
+            text = f"CANNOT PARSE INPUT DATA\n\nReason:\n{''.join(reason)}"
+        self.outtext.delete('1.0', 'end')
+        self.outtext.insert('1.0', text)
+
+    def _copy(self):
+        text = self.outtext.get('1.0', 'end')
+        self.clipboard_clear()
+        self.clipboard_append(text)
+        self.update()
+
+
 prsr = argparse.ArgumentParser()
-prsr.add_argument("source", type=str)
-prsr.add_argument("dest", type=str, default="./analyses.tex")
+prsr.add_argument(
+    "-g", "--gui", action="store_true",
+    help="Start GUI mode"
+)
+prsr.add_argument(
+    "source", type=str, default="", nargs='?',
+    help="Source file. Required if not starting GUI mode."
+)
+prsr.add_argument("dest", type=str, default="./analyses.tex", nargs='?')
 prsr.add_argument("-s", "--sep", type=str, default="; ")
 prsr.add_argument("-i", "--indent", type=str, default="\t")
 prsr.add_argument(
@@ -234,6 +303,12 @@ def main():
         level = logging.WARNING
     logging.basicConfig(level=level)
     labels = get_labels(args.namesfile)
+    if args.gui:
+        root = App(sep=args.sep, indent=args.indent, labels=labels)
+        root.mainloop()
+        return
+    elif not args.source:
+        prsr.error("Argument 'source' is required.")
     with open(args.dest, 'w') as dest:
         with codecs.open(args.source, encoding="utf-8") as source:
             while True:
