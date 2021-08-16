@@ -3,7 +3,7 @@ import re
 import csv
 import codecs
 import logging
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import tkinter as tk
 import io
 import traceback
@@ -50,10 +50,9 @@ class App(tk.Tk):
     def _parse(self):
         self._error = None
         text = self.intext.get('1.0', 'end')
-        handle = io.StringIO(text)
         try:
-            data = read_molecule(handle)
-            data['label'] = self.labels[data['id']]
+            data = parse_molecule(text)
+            # data['label'] = self.labels[data['id']]
             text = format_latex(data, self.sep, self.indent)
         except Exception as error:
             self._error = error
@@ -114,6 +113,8 @@ def _parse_nmr(text, values_regex):
     match = re.match(r"(\d+\w+ NMR) \((\d+) ?(?:MHz)?, ?([\d\w]+)\)", text)
     analysis, frequency, solvent = match.groups()
     values = re.findall(values_regex, text)
+    if not values:
+        raise ValueError("Unable to find any data.")
     data = {
         "frequency": frequency,
         "solvent": solvent,
@@ -131,6 +132,8 @@ def parse_uncoupled_nmr(text):
 
 
 def parse_ir(text):
+    if not text.lower().startswith("ir"):
+        raise ValueError("Should start with 'IR'.")
     data = {
         "method": re.search(r"\((.*?)\)", text).group(1),
         "values": re.findall(r"(\d{3,4})(?: cm-1)?", text),
@@ -139,6 +142,8 @@ def parse_ir(text):
 
 
 def parse_ms(text):
+    if not text.lower().startswith("hrms"):
+        raise ValueError("Should start with 'HRMS'.")
     data = {
         "method": re.search(r"\((.*?)\)", text).group(1),
         "found": re.search(r"found.*?(" + number + ")", text).group(1),
@@ -154,12 +159,57 @@ def parse_rotation(text):
 
 
 def parse_melting(text):
+    if not text.lower().startswith("m.p."):
+        raise ValueError("Should start with 'm.p.'.")
     return {"value": re.search(r"(" + numsrange + ")", text).group(0)}
     
 
 def parse_yield(text):
     match = re.search(r"(\d+)%?, ([\w\s]+)", text)
     return match.groups()
+
+
+RESOLUTION_ORDER = OrderedDict([
+    ("hnmr", parse_coupled_nmr),
+    ("cnmr", parse_uncoupled_nmr),
+    ("rotation", parse_rotation),
+    ("ir", parse_ir),
+    ("ms", parse_ms),
+    ("yield_form", parse_yield),
+    ("melting", parse_melting),
+])
+
+
+def _trim_line(line):
+    if len(line) > 25:
+        return line[:25] + "..."
+    else:
+        return line
+
+
+def parse_molecule(text):
+    """Parses analyses in arbitrary order.
+    Expects one analysis per line in same format as `read_molecule()`.
+    """
+    data = {}
+    lines = text.split("\n")
+    for line in lines:
+        if not line:
+            continue
+        for key, func in RESOLUTION_ORDER.items():
+            try:
+                data[key] = func(line)
+            except Exception as error:
+                continue  # next key (inner loop)
+            else:
+                logger.debug(f"{key} MATCHED '{_trim_line(line)}'.")
+                break  # go to next line (outer loop)
+        else:  # no match
+            logger.debug(f"nothing found in '{_trim_line(line)}'.")
+    if "yield_form" in data:
+        data["yield"], data["form"] = data["yield_form"]
+        del data["yield_form"]
+    return data
 
 
 def read_molecule(handle):
@@ -238,33 +288,43 @@ def format_hnmr(data):
     return vals
 
 
+FORMATTERS = OrderedDict([
+    ("name",
+        lambda data: f"{format_iupac(data['name'])} ({data['label']})  % {data['id']}"
+    ),
+    ("yield",
+        lambda data: f"\\data*{{yield}} \\SI{{{data['yield']}}}{{\\percent}} ({data['form']})"
+    ),
+    ("melting",
+        lambda data: f"\\data{{mp.}} {format_values(data['melting']['value'])}\\si{{\\celsius}}"
+    ),
+    ("rotation",
+        lambda data: f"\\data{{specific rot.}} \\num{{{data['rotation']['value']}}} "
+        f"($c = {data['rotation']['conc']}$, "
+        f"\\ch{{{data['rotation']['solvent']}}})"
+    ),
+    ("hnmr",
+        lambda data: f"\\NMR({data['hnmr']['frequency']})[{data['hnmr']['solvent']}] "
+        + ", ".join([format_hnmr(v) for v in data['hnmr']['values']])
+    ),
+    ("cnmr",
+        lambda data: f"\\NMR{{13,C}}({data['cnmr']['frequency']})[{data['cnmr']['solvent']}] "
+        + f"\\numlist{{{'; '.join([f'{float(n):.1f}' for n in data['cnmr']['values']])}}}"
+    ),
+    ("ir",
+        lambda data: f"\\data{{IR}}[{data['ir']['method']}] "
+        + f"\\numlist{{{'; '.join(data['ir']['values'])}}}"
+    ),
+    ("ms",
+        lambda data: f"\\data{{HRMS}} ({data['ms']['method']}) m/z calcd for \\ch{{{data['ms']['formula']}}}: "
+        f"\\num{{{data['ms']['calcd']}}} found: \\num{{{data['ms']['found']}}}"
+    ),
+])
+
+
 def format_latex(data, sep=";", indent="\t"):
     joint = f"{sep}\n{indent}"
-    latex_list = [
-        f"{format_iupac(data['name'])} ({data['label']})  % {data['id']}",
-        f"\\data*{{yield}} \\SI{{{data['yield']}}}{{\\percent}} ({data['form']})",
-    ]
-    if "melting" in data:
-        latex_list.append(
-            f"\\data{{mp.}} {format_values(data['melting']['value'])}\\si{{\\celsius}}"
-        )
-    latex_list.extend([
-        f"\\data{{specific rot.}} \\num{{{data['rotation']['value']}}} "
-        f"($c = {data['rotation']['conc']}$, "
-        f"\\ch{{{data['rotation']['solvent']}}})",
-    
-        f"\\NMR({data['hnmr']['frequency']})[{data['hnmr']['solvent']}] "
-        + ", ".join([format_hnmr(v) for v in data['hnmr']['values']]),
-
-        f"\\NMR{{13,C}}({data['cnmr']['frequency']})[{data['cnmr']['solvent']}] "
-        + f"\\numlist{{{'; '.join([f'{float(n):.1f}' for n in data['cnmr']['values']])}}}",
-        
-        f"\\data{{IR}}[{data['ir']['method']}] "
-        + f"\\numlist{{{'; '.join(data['ir']['values'])}}}",
-
-        f"\\data{{HRMS}} ({data['ms']['method']}) m/z calcd for \\ch{{{data['ms']['formula']}}}: "
-        f"\\num{{{data['ms']['calcd']}}} found: \\num{{{data['ms']['found']}}}",
-    ])
+    latex_list = [fmt(data) for key, fmt in FORMATTERS.items() if key in data]
     latex = joint.join(latex_list)
     return f"\\begin{{experimental}}\n{indent}{latex}\n\\end{{experimental}}\n\n"
     
