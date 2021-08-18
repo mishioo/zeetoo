@@ -334,7 +334,7 @@ def format_latex(data, sep=";", indent="\t", environment="experimental"):
     latex = joint.join(latex_list)
     if not environment:
         return latex
-    return f"\\begin{{{environment}}}\n{indent}{latex}\n\\end{{{environment}}}\n\n"
+    return f"\\begin{{{environment}}}\n{indent}{latex}\n\\end{{{environment}}}"
     
 
 def get_labels(
