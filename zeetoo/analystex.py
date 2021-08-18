@@ -14,13 +14,14 @@ logger = logging.getLogger(__name__)
 
 
 class App(tk.Tk):
-    def __init__(self, indent, sep, labels):
+    def __init__(self, indent, sep, labels, environment):
         super().__init__()
         self.title("Tex-ify analyses")
 
         self.indent = indent
         self.sep = sep
         self.labels = labels
+        self.environment = environment
 
         inframe = tk.LabelFrame(self, text="Paste in analyses here")
         inframe.pack(expand=True, fill=tk.BOTH, side=tk.TOP)
@@ -53,7 +54,7 @@ class App(tk.Tk):
         try:
             data = parse_molecule(text)
             # data['label'] = self.labels[data['id']]
-            text = format_latex(data, self.sep, self.indent)
+            text = format_latex(data, self.sep, self.indent, self.environment)
         except Exception as error:
             self._error = error
             exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -82,9 +83,14 @@ prsr.add_argument("dest", type=str, default="./analyses.tex", nargs='?')
 prsr.add_argument("-s", "--sep", type=str, default="; ")
 prsr.add_argument("-i", "--indent", type=str, default="\t")
 prsr.add_argument(
+    "-e", "--environment", type=str, default="experimental", nargs='?',
+    help="Name of environment wrapping analyses definitions. "
+    "If evoked without value, environment is not added at all."
+)
+prsr.add_argument(
     "-n", "--namesfile", type=str,
     help="File containing pairs of cmpd's symbol and in-latex label in csv format."
-    )
+)
 verbosity = prsr.add_mutually_exclusive_group()
 verbosity.add_argument(
     '--verbose', action='store_true',
@@ -322,11 +328,13 @@ FORMATTERS = OrderedDict([
 ])
 
 
-def format_latex(data, sep=";", indent="\t"):
+def format_latex(data, sep=";", indent="\t", environment="experimental"):
     joint = f"{sep}\n{indent}"
     latex_list = [fmt(data) for key, fmt in FORMATTERS.items() if key in data]
     latex = joint.join(latex_list)
-    return f"\\begin{{experimental}}\n{indent}{latex}\n\\end{{experimental}}\n\n"
+    if not environment:
+        return latex
+    return f"\\begin{{{environment}}}\n{indent}{latex}\n\\end{{{environment}}}\n\n"
     
 
 def get_labels(
@@ -364,7 +372,12 @@ def main():
     logging.basicConfig(level=level)
     labels = get_labels(args.namesfile)
     if args.gui:
-        root = App(sep=args.sep, indent=args.indent, labels=labels)
+        root = App(
+            sep=args.sep,
+            indent=args.indent,
+            labels=labels,
+            environment=args.environment,
+        )
         root.mainloop()
         return
     elif not args.source:
@@ -378,7 +391,7 @@ def main():
                     logger.info("No more data found.")
                     break
                 data['label'] = labels[data['id']]
-                dest.write(format_latex(data, args.sep, args.indent))
+                dest.write(format_latex(data, args.sep, args.indent, args.environment))
 
 
 if __name__ == '__main__':
